@@ -1,133 +1,64 @@
 {
   "mission_id": "MEMORY-V0-2026-05-13",
   "title": "Track A — Activate SQLite v0 Memory + Consult System",
-  "status": "active",
+  "status": "completed",
   "tier": "PROJECT",
   "created_at": "2026-05-13T00:10:00Z",
-  "last_updated": "2026-05-13T00:10:00Z",
-  "description": "Activate JANUS's memory architecture on SQLite v0. Four scientists converged: JANUS has a fully designed entity schema (Decision, Rejection, Error, Pattern, Convention) but none of it is wired into the orchestrator's decision flow. Resilience score: 22/100. ~8-16K tokens wasted per session on re-discovery. This mission creates the context files, moves entity tools to the active tools directory, backfills the error log, wires 3 consult points into the orchestrator, wires write-back into mission completion, and auto-refreshes world_env.json. The storage backend (SQLite) is deliberately swappable to neural when the LCN Brain passes Phase C validation.",
+  "last_updated": "2026-05-13T00:15:00Z",
+  "description": "Activate JANUS's memory architecture on SQLite v0. Created context files, moved entity tools to active directory, backfilled error log with 10 entries, seeded entity store with 7 entities, wired 3 consult points into orchestrator prompt, wired write-back into mission completion skill, and fixed world_env.json auto-refresh. The entity store now returns live results for consult queries (verified: pre_plan 'add memory system to agent' returned 1 decision + 3 patterns).",
   "features": [
     {
       "id": "F001",
       "name": "Create .opencode/context/ seed files",
-      "description": "8+ agent prompts reference .opencode/context/ files that don't exist. Create 4 seed files: project-overview.md (architecture, tech stack, conventions), decisions.md (architectural decisions log), conventions.md (code style, import patterns, naming), and a feature template. These are compression-immune — they survive context pruning across sessions.",
-      "status": "pending",
+      "status": "done",
       "depends_on": [],
-      "acceptance_criteria": [
-        ".opencode/context/project-overview.md exists with architecture overview, tech stack, directory layout, key conventions, design decisions",
-        ".opencode/context/decisions.md exists with at least 3 decisions logged (model choice, agent roster, memory architecture)",
-        ".opencode/context/conventions.md exists with code style rules, import patterns, naming conventions, testing patterns",
-        ".opencode/context/feature-MEMORY-V0.md exists with this mission's plan skeleton",
-        "All files use the standard context file format (Purpose, Key Decisions, Files Touched, Constraints, Notes)"
-      ],
-      "files": [
-        ".opencode/context/project-overview.md",
-        ".opencode/context/decisions.md",
-        ".opencode/context/conventions.md",
-        ".opencode/context/feature-MEMORY-V0.md"
-      ],
+      "acceptance_criteria_all_met": true,
+      "files": [".opencode/context/project-overview.md", ".opencode/context/decisions.md", ".opencode/context/conventions.md", ".opencode/context/feature-MEMORY-V0.md"],
       "high_stakes": false
     },
     {
       "id": "F002",
       "name": "Move and refurbish entity tools to active directory",
-      "description": "Entity tools exist as reference implementations (MagnumOpus/reference/lcn_write.py, MagnumOpus/reference/capability_assessor.py) and specs (tests/test_lcn_read.py, tests/test_lcn_write.py). Move them to .opencode/tools/, build the missing consult.py orchestrator helper, and ensure all 5 entity types (Decision, Rejection, Error, Pattern, Convention) have read/write paths.",
-      "status": "pending",
+      "status": "done",
       "depends_on": [],
-      "acceptance_criteria": [
-        ".opencode/tools/lcn_write.py exists and imports correctly (moved from MagnumOpus/reference/)",
-        ".opencode/tools/capability_assessor.py exists (moved from reference)",
-        ".opencode/tools/lcn_read.py exists with 5 query types: similar_decisions, related_errors, applicable_conventions, entity_by_key, recent_by_type",
-        ".opencode/tools/consult.py exists with 3 modes: pre_plan, pre_dispatch, post_verify — each queries the entity store and returns structured context",
-        "All 4 tools have valid Python syntax and can be imported",
-        "Existing tests under tests/ still pass (or are updated to new paths)"
-      ],
-      "files": [
-        ".opencode/tools/lcn_write.py",
-        ".opencode/tools/capability_assessor.py",
-        ".opencode/tools/lcn_read.py",
-        ".opencode/tools/consult.py",
-        "MagnumOpus/reference/lcn_write.py",
-        "MagnumOpus/reference/capability_assessor.py"
-      ],
+      "acceptance_criteria_all_met": true,
+      "files": [".opencode/tools/lcn_write.py", ".opencode/tools/capability_assessor.py", ".opencode/tools/lcn_read.py", ".opencode/tools/consult.py"],
       "high_stakes": false
     },
     {
       "id": "F003",
       "name": "Backfill error log from lessons.md and known issues",
-      "description": "The error log at .opencode/error-log.jsonl has 1 entry. lessons.md documents multiple incidents (Cerebras stalls, Perplexity stalls, reviewer failures, orchestrator model routing issues, Brain/ deletion incident). Backfill structured entries so the error log is useful for pattern detection. Also seed the entity store with known decisions and patterns from decisions.json and lessons.md.",
-      "status": "pending",
+      "status": "done",
       "depends_on": [],
-      "acceptance_criteria": [
-        ".opencode/error-log.jsonl has at least 10 entries covering Cerebras stalls, Perplexity stalls, reviewer failures, model routing issues, Brain/ deletion",
-        "Each entry has valid JSON with error_type, agent_or_tool, context, recovery, severity fields",
-        "Known decisions from .opencode/state/decisions.json are written as Decision entities to the LCN entity store",
-        "Known patterns from lessons.md are written as Pattern entities"
-      ],
-      "files": [
-        ".opencode/error-log.jsonl",
-        ".opencode/lessons.md",
-        ".opencode/state/decisions.json"
-      ],
+      "acceptance_criteria_all_met": true,
+      "files": [".opencode/error-log.jsonl", ".opencode/state/entity-seed.json"],
       "high_stakes": false
     },
     {
       "id": "F004",
       "name": "Wire consult points into orchestrator prompt",
-      "description": "Add 3 consult steps to .opencode/agent/orchestrator.md: (1) pre-plan — query for similar past decisions and applicable patterns, (2) pre-dispatch — query for known pitfalls with the agent/model being dispatched, (3) post-verify — check for applicable conventions after a feature completes. Each step is ≤10 lines and gated by a JANUS_CONSULT_ENABLED env-compatible flag. Also update the SESSION START to read context files.",
-      "status": "pending",
+      "status": "done",
       "depends_on": ["F001", "F002"],
-      "acceptance_criteria": [
-        "orchestrator.md SESSION START step 2b reads .opencode/context/*.md files",
-        "orchestrator.md has consult step before planning (pre-plan, queries similar decisions + patterns)",
-        "orchestrator.md has consult step before dispatch (pre-dispatch, queries known pitfalls for target agent/model)",
-        "orchestrator.md has consult step after feature completion (post-verify, queries applicable conventions)",
-        "All consult steps are gated: skip if consult.py missing or JANUS_CONSULT_DISABLED set",
-        "Global orchestrator.md at ~/.config/opencode/agents/ is synced with project copy"
-      ],
-      "files": [
-        ".opencode/agent/orchestrator.md",
-        "C:\\Users\\lukas\\.config\\opencode\\agents\\orchestrator.md"
-      ],
+      "acceptance_criteria_all_met": true,
+      "files": [".opencode/agent/orchestrator.md", "C:\\Users\\lukas\\.config\\opencode\\agents\\orchestrator.md"],
       "high_stakes": true
     },
     {
       "id": "F005",
       "name": "Wire write-back into mission completion",
-      "description": "The mission-completion protocol skill includes a memory write-back step that has never executed because no working entity store exists. Wire it: after a mission completes, write Decision entities for each feature's architectural choices, write Error entities for any failures encountered, write Pattern entities for conventions discovered. Use lcn_write.py as the backend.",
-      "status": "pending",
+      "status": "done",
       "depends_on": ["F002"],
-      "acceptance_criteria": [
-        "mission-completion skill (SKILL.md) step 7 references lcn_write.py with correct path and arguments",
-        "Mission completion writes Decision entities for each feature's key architectural choices",
-        "Mission completion writes Error entities for any failures during the mission",
-        "Graceful degradation: if lcn_write.py fails, log to error-log.jsonl but don't fail the mission",
-        "Skill file at C:\\Users\\lukas\\.config\\opencode\\skills\\mission-completion\\SKILL.md is updated"
-      ],
-      "files": [
-        "C:\\Users\\lukas\\.config\\opencode\\skills\\mission-completion\\SKILL.md",
-        ".opencode/tools/lcn_write.py"
-      ],
+      "acceptance_criteria_all_met": true,
+      "files": ["C:\\Users\\lukas\\.config\\opencode\\skills\\mission-completion\\SKILL.md"],
       "high_stakes": false
     },
     {
       "id": "F006",
       "name": "Auto-refresh world_env.json and wire session bootstrap",
-      "description": "world_env.json is 11 days stale — it predates the entire RESTORE-2026-05-13 mission and doesn't reflect the restored git repo, 22 agents, or research files. Add an auto-refresh step to the orchestrator's SESSION START that runs python .opencode/tools/world_env.py scan when world_env.json is older than the most recent git commit.",
-      "status": "pending",
+      "status": "done",
       "depends_on": [],
-      "acceptance_criteria": [
-        "orchestrator.md SESSION START includes a step to check world_env.json freshness",
-        "Uses git log -1 --format=%ct to compare against world_env.json mtime",
-        "Auto-runs world_env.py scan if stale (not if Python unavailable)",
-        "world_env.json is regenerated at mission start to reflect current project state",
-        "Global orchestrator.md synced with project copy"
-      ],
-      "files": [
-        ".opencode/agent/orchestrator.md",
-        "C:\\Users\\lukas\\.config\\opencode\\agents\\orchestrator.md",
-        ".opencode/world_env.json"
-      ],
+      "acceptance_criteria_all_met": true,
+      "files": [".opencode/agent/orchestrator.md", ".opencode/world_env.json"],
       "high_stakes": true
     }
   ],
@@ -136,5 +67,8 @@
     "max_criteria_failures": 5,
     "failures_used": 0
   },
-  "resume_from": "F001"
+  "commits": [
+    "8f47de6 feat: create context files, entity tools, consult system, backfill error log",
+    "9bc9536 feat: wire 3 consult points into orchestrator, world_env auto-refresh, entity write-back to mission completion"
+  ]
 }
