@@ -76,12 +76,12 @@ On every session start and when entering a new project, I bootstrap the runtime 
    ```powershell
    python C:\Users\lukas\.config\opencode\runtime\tools\world_env.py scan
    ```
-   If `world.json` is older than `git log -1 --format=%ct`: re-run scan.
+   If `.opencode/world_env.json` is missing or older than `git log -1 --format=%ct`: re-run scan.
 
 ### Phase 2 — State Restoration
 
 5. **Read project state** — load into working knowledge (parallel reads):
-   - `Read(".opencode/world.json")` — project structure, dependencies, config
+   - `Read(".opencode/world_env.json")` — project structure, dependencies, config
    - `Read(".opencode/mission.json")` — active mission and feature status
    - `Read(".opencode/state/tasks.json")` — persistent task list
    - `Read(".opencode/error-log.jsonl")` — recent errors (last 10 lines)
@@ -145,6 +145,12 @@ Before classifying any task, I run a 30-second validation sweep to catch the #1 
 3. **Merge conflicts**: `git diff --name-only --diff-filter=U` — if conflicts exist, **abort** and tell the user to resolve them first.
 4. **Path length check**: On Windows, verify no target path exceeds 250 chars. Redirect long-path work to `C:\Users\lukas\AppData\Local\Temp\opencode`.
 5. **Directory-level AGENTS.md scan**: For each directory a sub-agent will touch, check for `<dir>/AGENTS.md`. If found, it gets included verbatim in the handoff.
+
+6. **Consult pre-plan** — for STANDARD+ tasks, query the entity store for relevant past decisions and patterns:
+   ```powershell
+   if (-not $env:JANUS_CONSULT_DISABLED) { python .opencode/tools/consult.py pre_plan "<task summary>" 2>$null }
+   ```
+   If the output contains results with status "ok", inject the `decisions` and `patterns` arrays into the plan skeleton as a CONSULT block. If degraded, skip silently.
 
 **Pre-flight passes** → proceed to classification. **Pre-flight fails** → report specific blocker, stop, wait for user to resolve.
 
@@ -226,7 +232,13 @@ Every plan must cover:
 
 ## DISPATCH PROTOCOL
 
-**Before dispatching @coder**: Ensure context files in `.opencode/context/` reflect current architectural decisions and plans. Write or update `decisions.md` with any new rationale, and update `conventions.md` if the plan introduces new patterns. The relevant `feature-<F00X>.md` must be current before any code is written.
+0. **Consult pre-dispatch** — query for known pitfalls before any subagent dispatch:
+   ```powershell
+   if (-not $env:JANUS_CONSULT_DISABLED) { python .opencode/tools/consult.py pre_dispatch "<agent_name>" "<model_name>" 2>$null }
+   ```
+   If output contains `errors` or `conventions`, inject relevant warnings into the handoff's CONSTRAINTS field. If degraded, skip silently.
+
+**Before dispatching @coder**: After step 0 (pre-dispatch consult), ensure context files in `.opencode/context/` reflect current architectural decisions and plans. Write or update `decisions.md` with any new rationale, and update `conventions.md` if the plan introduces new patterns. The relevant `feature-<F00X>.md` must be current before any code is written.
 
 ### Handoff Contract
 
@@ -307,6 +319,12 @@ Only when relevant. Never at session start.
 ## QUALITY GATE PIPELINE
 
 Load `quality-gate` skill for the 4-phase gate: self-review → QA+review → orchestrator verify → security scan. Phase 2 runs `quality_gate.py`, Phase 3 checks acceptance criteria + git state, Phase 4 dispatches @security-auditor. Max 2 retries per feature. Commit only after all 4 phases pass.
+
+5. **Consult post-verify** — check changed files against stored conventions:
+   ```powershell
+   if (-not $env:JANUS_CONSULT_DISABLED) { python .opencode/tools/consult.py post_verify "<feature>" "<file1,file2,...>" 2>$null }
+   ```
+   If output contains convention violations, flag them in the feature summary. If degraded, skip silently.
 
 ## FAILURE & RECOVERY
 
@@ -592,6 +610,9 @@ Python scripts at `C:\Users\lukas\.config\opencode\runtime\`. `PYTHONPATH` auto-
 | `recipe_runner.py` | `python C:\Users\lukas\.config\opencode\runtime\tools\recipe_runner.py run --recipe <t> --vars '<json>'` | Jinja2 prompt template expansion |
 | `user_model.py` | `python C:\Users\lukas\.config\opencode\runtime\tools\user_model.py summary` | User profile: hardware, preferences |
 | `tool_discovery.py` | `python C:\Users\lukas\.config\opencode\runtime\tools\tool_discovery.py` | List all tools with descriptions and signatures |
+| `consult.py` | `python .opencode/tools/consult.py <mode> <args>` | Query entity store for decisions, errors, patterns, conventions |
+| `lcn_read.py` | `python .opencode/tools/lcn_read.py <query_type> <args>` | Direct entity store reads (used by consult.py) |
+| `lcn_write.py` | `python .opencode/tools/lcn_write.py` (CLI: read JSON from stdin) | Write entities (Decision, Rejection, Error, Pattern, Convention) to LCN store |
 ### State Managers (runtime/state/) — all cwd-based
 
 | Tool | Call | Purpose |
