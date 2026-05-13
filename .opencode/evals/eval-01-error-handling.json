@@ -1,0 +1,16 @@
+{
+  "id": "eval-01-error-handling",
+  "description": "Add error handling to a function that reads a file",
+  "category": "correctness",
+  "pass_threshold": 70,
+  "task": "Add proper error handling to this Python function. Handle: FileNotFoundError, PermissionError, and general exceptions. Return None on any error and log the error message.",
+  "starter_code": "def read_config(path):\n    with open(path) as f:\n        return f.read()",
+  "assertions": [
+    {"type": "contains",     "value": "FileNotFoundError", "description": "Handles FileNotFoundError"},
+    {"type": "contains",     "value": "PermissionError",   "description": "Handles PermissionError"},
+    {"type": "contains",     "value": "return None",       "description": "Returns None on error"},
+    {"type": "contains",     "value": "except",            "description": "Uses try/except"},
+    {"type": "not_contains", "value": "except Exception:", "description": "No bare except Exception without logging"},
+    {"type": "ruff_passes",  "value": "",                  "description": "Passes ruff lint"}
+  ]
+}

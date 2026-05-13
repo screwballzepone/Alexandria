@@ -1,0 +1,14 @@
+{
+  "branch": "master",
+  "phase": "Phase-F-complete",
+  "feature": "state-directory-live",
+  "last_commit": {
+    "hash": "19c7f7d",
+    "message": "feat: structured state directory",
+    "time": "2026-05-01T19:10:00Z"
+  },
+  "active_mission": null,
+  "stale": false,
+  "notes": "State directory system deployed",
+  "last_updated": "2026-05-01T22:07:21Z"
+}

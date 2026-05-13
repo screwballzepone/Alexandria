@@ -1,0 +1,16 @@
+{
+  "id": "eval-03-write-test",
+  "description": "Write a pytest test for a simple function",
+  "category": "testing",
+  "pass_threshold": 75,
+  "task": "Write a pytest test for this function. Test: (1) normal case returns correct value, (2) empty input returns 0, (3) negative numbers are handled. Use descriptive test names.",
+  "starter_code": "def sum_positives(numbers):\n    return sum(n for n in numbers if n > 0)",
+  "assertions": [
+    {"type": "contains",    "value": "def test_",          "description": "Contains test functions"},
+    {"type": "contains",    "value": "assert",             "description": "Contains assertions"},
+    {"type": "contains",    "value": "sum_positives",      "description": "Tests the target function"},
+    {"type": "contains",    "value": "[]",                 "description": "Tests empty input case"},
+    {"type": "regex",       "value": "def test_\\w+",      "description": "Has named test functions"},
+    {"type": "ruff_passes", "value": "",                   "description": "Passes ruff lint"}
+  ]
+}

@@ -1,0 +1,51 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+
+# Virtual environment
+venv/
+.venv/
+
+# Node
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets
+.env
+.env.*
+credentials.json
+*.key
+*.pem
+auth.json
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Brain/LCN (separate project, not part of GUI repo)
+Brain/lcn_brain/lcn_brain.egg-info/
+Brain/__pycache__/
+Brain/lcn_brain/__pycache__/
+Brain/lcn_jvp/__pycache__/
+
+# Runtime artifacts
+.opencode/node_modules/
+.opencode/error-log.jsonl
+.opencode/dep-scout-report.json
+
+# Temp
+C:\Users\lukas\AppData\Local\Temp\opencode/

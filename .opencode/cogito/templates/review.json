@@ -1,0 +1,12 @@
+{
+  "objective": "review",
+  "items": [
+    {"id": "1", "description": "Verify code correctness — logic, edge cases, error handling", "mandatory": true},
+    {"id": "2", "description": "Check types/signatures match between files", "mandatory": true},
+    {"id": "3", "description": "Audit for security issues (injection, auth, secrets, paths)", "mandatory": true},
+    {"id": "4", "description": "Review style consistency with project conventions", "mandatory": true},
+    {"id": "5", "description": "Confirm tests are meaningful (not trivially passing)", "mandatory": true},
+    {"id": "6", "description": "Flag any architectural concerns for future attention", "mandatory": false},
+    {"id": "7", "description": "Check performance implications of changes", "mandatory": false}
+  ]
+}

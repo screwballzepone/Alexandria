@@ -1,0 +1,19 @@
+# Normalize all text files to LF in the repo and in working trees.
+# PowerShell 5+, Python, Node, and all modern Windows tooling handle LF fine.
+# Prevents spurious "modified" status when files are authored from Linux/WSL.
+
+* text=auto eol=lf
+
+# Explicit overrides for files that MUST be CRLF (Windows batch files)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files — leave alone
+*.png binary
+*.jpg binary
+*.ico binary
+*.pyc binary
+*.so binary
+*.dll binary
+*.exe binary
+*.plist binary

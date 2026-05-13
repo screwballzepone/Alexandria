@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "last_updated": null,
+  "style": {
+    "prefers_functional": null,
+    "hates_verbose_names": null,
+    "test_first": false,
+    "comment_style": "minimal"
+  },
+  "review_patterns": {
+    "always_wants": [],
+    "always_rejects": [],
+    "observed_count": 0
+  },
+  "preferred_commit_style": "conventional",
+  "domain_expertise": [],
+  "known_preferences": [],
+  "auto_observed": []
+}

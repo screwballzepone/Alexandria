@@ -1,0 +1,13 @@
+{
+  "name": "api-builder",
+  "version": "1.0.0",
+  "description": "Build a REST API endpoint with validation and tests",
+  "parameters": [
+    {"name": "language", "type": "string", "description": "Programming language (python, typescript, go)", "required": true},
+    {"name": "endpoint_name", "type": "string", "description": "Name of the endpoint/resource", "required": true},
+    {"name": "database", "type": "string", "description": "Database to use", "default": "sqlite"},
+    {"name": "include_tests", "type": "boolean", "description": "Generate tests", "default": true},
+    {"name": "include_auth", "type": "boolean", "description": "Add JWT authentication", "default": false}
+  ],
+  "instructions": "Create a REST API for {{endpoint_name}} in {{language}}.\n\nRequirements:\n1. CRUD endpoints (Create, Read, Update, Delete) for {{endpoint_name}}\n2. Use {{database}} for data storage\n3. Input validation on all endpoints\n4. Proper error handling with meaningful status codes\n{% if include_auth %}\n5. JWT-based authentication middleware\n{% endif %}\n{% if include_tests %}\n6. Unit tests for all endpoints\n7. Integration tests for the full flow\n{% endif %}\n\nReturn the implementation with all necessary files."
+}

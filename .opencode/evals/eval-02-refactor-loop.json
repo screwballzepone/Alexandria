@@ -1,0 +1,14 @@
+{
+  "id": "eval-02-refactor-loop",
+  "description": "Refactor a for-loop to use list comprehension",
+  "category": "style",
+  "pass_threshold": 80,
+  "task": "Refactor this code to use a list comprehension. Keep the logic identical. The result must be assigned to 'result'.",
+  "starter_code": "result = []\nfor item in items:\n    if item > 0:\n        result.append(item * 2)",
+  "assertions": [
+    {"type": "contains",     "value": "result = [",     "description": "Uses list comprehension syntax"},
+    {"type": "not_contains", "value": "for item in",    "description": "No explicit for loop"},
+    {"type": "not_contains", "value": ".append(",       "description": "No append call"},
+    {"type": "ruff_passes",  "value": "",               "description": "Passes ruff lint"}
+  ]
+}

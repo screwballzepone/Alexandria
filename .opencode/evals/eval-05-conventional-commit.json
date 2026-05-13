@@ -1,0 +1,15 @@
+{
+  "id": "eval-05-conventional-commit",
+  "description": "Write a conventional commit message",
+  "category": "output-format",
+  "pass_threshold": 80,
+  "task": "Write a git commit message in conventional commits format for this change: A new function 'validate_email' was added to core/validators.py that checks email format using regex. It raises ValueError for invalid emails.",
+  "starter_code": "",
+  "assertions": [
+    {"type": "regex",        "value": "^feat|^fix|^chore|^refactor|^docs|^test", "description": "Starts with conventional type"},
+    {"type": "contains",     "value": "(",                 "description": "Has scope in parens"},
+    {"type": "contains",     "value": ")",                 "description": "Scope closed"},
+    {"type": "not_contains", "value": "\n\n\n",           "description": "No excessive blank lines"},
+    {"type": "regex",        "value": ".{10,72}",          "description": "Subject line 10-72 chars"}
+  ]
+}

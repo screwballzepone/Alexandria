@@ -1,0 +1,4 @@
+# Dev dependencies for the OpenCode pipeline
+# Install: pip install -r requirements-dev.txt
+ruff
+pytest

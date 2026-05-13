@@ -1,0 +1,11 @@
+{
+  "name": "test-generator",
+  "version": "1.0.0",
+  "description": "Generate comprehensive tests for a module",
+  "parameters": [
+    {"name": "module", "type": "string", "description": "Module path to test (e.g., core/worker.py)", "required": true},
+    {"name": "framework", "type": "string", "description": "Test framework", "default": "pytest"},
+    {"name": "coverage_target", "type": "integer", "description": "Coverage percentage target", "default": 80}
+  ],
+  "instructions": "Generate comprehensive tests for {{module}} using {{framework}}.\n\nTarget: {{coverage_target}}% code coverage\n\nRequirements:\n1. Read the module to understand all functions, classes, and edge cases\n2. Write tests covering:\n   - Happy path for each public function/method\n   - Edge cases (empty input, None, boundary values)\n   - Error conditions (exceptions, invalid input)\n   - Integration points (mocked where appropriate)\n3. Use {{framework}} conventions (fixtures, parametrize, markers)\n4. Tests must be runnable: pytest <test_file> should work\n\nWrite the test file alongside the module or in tests/ directory."
+}

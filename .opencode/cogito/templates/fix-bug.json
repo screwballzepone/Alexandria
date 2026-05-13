@@ -1,0 +1,11 @@
+{
+  "objective": "fix-bug",
+  "items": [
+    {"id": "1", "description": "Reproduce the bug with a test case", "mandatory": true},
+    {"id": "2", "description": "Identify root cause (not just symptom)", "mandatory": true},
+    {"id": "3", "description": "Apply minimal fix — only change what's necessary", "mandatory": true},
+    {"id": "4", "description": "Verify the test case now passes", "mandatory": true},
+    {"id": "5", "description": "Run full test suite to check for regressions", "mandatory": true},
+    {"id": "6", "description": "Check if similar patterns exist elsewhere (cascading fixes)", "mandatory": false}
+  ]
+}

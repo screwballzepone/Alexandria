@@ -1,0 +1,12 @@
+{
+  "objective": "audit",
+  "items": [
+    {"id": "1", "description": "Scan for dead files (no imports, no references in pipeline docs)", "mandatory": true},
+    {"id": "2", "description": "Check for stale code — commented-out blocks, unused functions", "mandatory": true},
+    {"id": "3", "description": "Verify gitignore covers generated/transient files", "mandatory": true},
+    {"id": "4", "description": "Audit cross-system integration (hooks↔worker, service imports, etc.)", "mandatory": true},
+    {"id": "5", "description": "Update stale documentation (AGENTS.md, project-state.md)", "mandatory": true},
+    {"id": "6", "description": "Run lint on entire codebase (ruff check .)", "mandatory": true},
+    {"id": "7", "description": "Check for duplicate/conflicting configurations", "mandatory": false}
+  ]
+}

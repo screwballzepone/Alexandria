@@ -1,0 +1,255 @@
+{
+  "generated_at": "2026-04-25T21:51:47Z",
+  "last_updated": "2026-04-27T22:00:00Z",
+  "generated_by": "onboarder",
+  "schema_version": 1,
+  "project_type": "python-gui",
+  "language_primary": "python",
+  "entry_points": [
+    {
+      "path": "main.py",
+      "purpose": "Entry point — creates QApplication, loads dark theme stylesheet, shows MainWindow",
+      "run_command": "python main.py"
+    },
+    {
+      "path": "start.bat",
+      "purpose": "Windows launcher — runs main.py via pythonw.exe with no terminal window",
+      "run_command": "start.bat"
+    }
+  ],
+  "critical_files": [
+    {
+      "path": "ui/main_window.py",
+      "purpose": "MainWindow — toolbar, sidebar (Files/Sessions/Memory/Mission tabs), chat area, worker signal handlers",
+      "exports": ["MainWindow"],
+      "key_imports": ["core.opencode_service", "core.service_worker", "core.worker", "ui.dialogs", "core.memory", "utils.helpers"],
+      "lines": 1010,
+      "fragility": "watch",
+      "last_noted_issue": "Imports core.drift_guard.check_config() on line 64 — restored 2026-04-27 from git (was deleted). Drift guard catches: missing opencode.json, missing default agent file, agent frontmatter issues, missing instructions files, missing protocols dir"
+    },
+    {
+      "path": "core/worker.py",
+      "purpose": "QThread worker — runs opencode.cmd run in subprocess with JSON streaming, message queue, and process kill via taskkill",
+      "exports": ["OpenCodeWorker"],
+      "key_imports": ["queue", "subprocess", "PySide6.QtCore"],
+      "lines": 191,
+      "fragility": "fragile",
+      "last_noted_issue": "shell=True spawns cmd.exe intermediate; terminate() alone orphans the child process. stop() uses taskkill /F /T /PID which is correct for Windows."
+    },
+    {
+      "path": "core/opencode_service.py",
+      "purpose": "Static helpers — wraps opencode.cmd CLI calls for models, agents, sessions, and session messages",
+      "exports": ["OpenCodeService"],
+      "key_imports": ["json", "re", "subprocess"],
+      "lines": 124,
+      "fragility": "fragile",
+      "last_noted_issue": "shell=True with 30s timeout. Multiline SQL queries (line 111) must be single-line strings — Windows shell mangling. DB queries use string interpolation (SQL injection risk in session_id)"
+    },
+    {
+      "path": "core/memory.py",
+      "purpose": "SQLite-backed long-term agent memory — stores/retrieves/deletes key-value pairs per workspace",
+      "exports": ["AgentMemory"],
+      "key_imports": ["sqlite3", "time", "pathlib"],
+      "lines": 95,
+      "fragility": "stable",
+      "last_noted_issue": null
+    },
+    {
+      "path": "core/service_worker.py",
+      "purpose": "Generic QThread wrapper — runs any callable in background and emits result_ready / error_occurred signals",
+      "exports": ["ServiceWorker"],
+      "key_imports": ["PySide6.QtCore"],
+      "lines": 24,
+      "fragility": "stable",
+      "last_noted_issue": null
+    },
+    {
+      "path": "ui/dialogs.py",
+      "purpose": "Modal dialogs — ProvidersDialog (auth.json editor), StatsDialog (token usage), McpDialog (MCP server manager)",
+      "exports": ["ProvidersDialog", "StatsDialog", "McpDialog"],
+      "key_imports": ["json", "subprocess", "pathlib", "PySide6.QtWidgets"],
+      "lines": 222,
+      "fragility": "watch",
+      "last_noted_issue": "All three dialogs launch opencode.cmd via shell=True subprocesses. StatsDialog and McpDialog use Popen().communicate(timeout=30) with no timeout handling in _fetch_* static methods."
+    },
+    {
+      "path": "utils/helpers.py",
+      "purpose": "format_timestamp() — converts datetime to human-readable relative time string ('5 minutes ago', '1 day ago', etc.)",
+      "exports": ["format_timestamp"],
+      "key_imports": ["datetime"],
+      "lines": 84,
+      "fragility": "stable",
+      "last_noted_issue": null
+    },
+    {
+      "path": "assets/style.qss",
+      "purpose": "Full dark-theme Qt stylesheet (VS Code-inspired) — colors QMainWindow, QTreeView, QTextBrowser, QTextEdit, QPushButton, QSplitter, QToolBar",
+      "exports": [],
+      "key_imports": [],
+      "lines": 120,
+      "fragility": "stable",
+      "last_noted_issue": null
+    },
+    {
+      "path": "main.py",
+      "purpose": "Application entry point — creates QApplication, loads style.qss, instantiates MainWindow, starts event loop",
+      "exports": ["main"],
+      "key_imports": ["ui.main_window"],
+      "lines": 30,
+      "fragility": "stable",
+      "last_noted_issue": null
+    },
+    {
+      "path": ".opencode/opencode.json",
+      "purpose": "OpenCode CLI configuration — model, small_model, provider options, permission rules, agent settings, custom slash commands",
+      "exports": [],
+      "key_imports": [],
+      "lines": 103,
+      "fragility": "watch",
+      "last_noted_issue": "Config has been updated: model=deepseek/deepseek-v4-flash, small_model same. AGENTS.md model roster still stale (lists gemini orchestrator, coder.md missing). clean as of 2026-04-27."
+    },
+    {
+      "path": ".opencode/tools/consult.py",
+      "purpose": "LCN (Local Context Network) query tool — retrieves capability assessments, reads/writes LCN entities, consults knowledge base",
+      "exports": [],
+      "key_imports": ["subprocess", "json", "pathlib"],
+      "lines": 410,
+      "fragility": "fragile",
+      "last_noted_issue": "Uses sys.stdout.reconfigure(encoding='utf-8', errors='replace') — requires Python 3.7+. shell=True throughout."
+    },
+    {
+      "path": ".opencode/tools/genesis.py",
+      "purpose": "Mission genesis tool — creates mission.json, blackboard.json, constructs feature DAG, seeds the mission state machine",
+      "exports": [],
+      "key_imports": ["subprocess", "json", "pathlib"],
+      "lines": 180,
+      "fragility": "fragile",
+      "last_noted_issue": "shell=True subprocess calls for git operations. Relies on opencode.cmd being in PATH."
+    },
+    {
+      "path": ".opencode/tools/scheduler.py",
+      "purpose": "Mission scheduler — reads issue queue, creates feature prompts, starts missions respecting budget limits",
+      "exports": [],
+      "key_imports": ["subprocess", "json", "pathlib"],
+      "lines": 200,
+      "fragility": "fragile",
+      "last_noted_issue": "shell=True for opencode.cmd calls. Writes prompt files to disk."
+    },
+    {
+      "path": "MagnumOpus/",
+      "purpose": "JANUS mission control — session state, backlog, protocol specs, cowork reports, reference impls, seeds, scripts. 32 files tracking the project's self-hosting bootstrap from OpenCode GUI → autonomous dev platform.",
+      "exports": [],
+      "key_imports": [],
+      "lines": 0,
+      "fragility": "watch",
+      "last_noted_issue": "session-state.md was 2 weeks stale (models, agents wrong). Updated 2026-04-27. BACKLOG batch 23 still in-progress. coder.md + prompt-writer.md missing from .opencode/agent/."
+    },
+    {
+      "path": "core/drift_guard.py",
+      "purpose": "Config validation on app startup — checks opencode.json validity, default agent file, agent frontmatter, instructions files, protocols directory. Returns list of warning strings.",
+      "exports": ["check_config"],
+      "key_imports": ["json", "pathlib"],
+      "lines": 77,
+      "fragility": "stable",
+      "last_noted_issue": null
+    }
+  ],
+  "architecture_summary": "A PySide6 desktop GUI (main.py → MainWindow) that wraps the OpenCode CLI tool into a chat interface. The user types instructions which are sent to OpenCode via a QThread background worker (OpenCodeWorker in core/worker.py) running opencode.cmd run --format json. The JSON-streamed output is parsed for text/tool_use events and rendered as styled HTML in a QTextBrowser chat display. Static CLI queries (models, agents, sessions) use a generic ServiceWorker QThread wrapper (core/service_worker.py) wrapping static methods on OpenCodeService (core/opencode_service.py). Long-term agent memory is stored via SQLite in AgentMemory (core/memory.py). The .opencode/ directory contains OpenCode's own config, agent definitions, protocol specs, and automation tools (scheduler, CI monitor, issue monitor, genesis).",
+  "dependencies": {
+    "external": [
+      "PySide6>=6.11.0 (Qt GUI framework)",
+      "markdown>=3.10.2 (renders agent output as HTML in chat display)",
+      "ruff (dev — linting/formatting)",
+      "pytest (dev — testing)",
+      "opencode-ai (external CLI — the primary backend this GUI wraps)"
+    ],
+    "internal_modules": [
+      "core.opencode_service (static CLI wrappers for models/agents/sessions)",
+      "core.worker (QThread streaming subprocess worker with message queue)",
+      "core.service_worker (generic QThread for any blocking callable)",
+      "core.memory (SQLite long-term agent memory store)",
+      "ui.main_window (MainWindow — the main application window)",
+      "ui.dialogs (ProvidersDialog, StatsDialog, McpDialog)",
+      "utils.helpers (relative time formatting)"
+    ]
+  },
+  "known_gotchas": [
+    {
+      "file": "core/opencode_service.py",
+      "description": "SQL query on line 90 uses string interpolation for session_id — SQL injection risk. Must escape or parameterize before production.",
+      "source": "observation"
+    },
+    {
+      "file": "core/worker.py",
+      "description": "stop() uses taskkill /F /T /PID for Windows process tree cleanup — essential because shell=True spawns cmd.exe as parent. Never use .terminate() alone on Windows.",
+      "source": "observation"
+    },
+    {
+      "file": "core/worker.py",
+      "description": "JSON parsing error on non-JSON lines (e.g. CLI noise) is silently swallowed with pass — debug output from opencode.cmd may be lost.",
+      "source": "observation"
+    },
+    {
+      "file": "ui/main_window.py",
+      "description": "References 'from core.drift_guard import check_config' on line 64 — core/drift_guard.py was missing from disk. Restored 2026-04-27 from git (commit 79a06ae). Now functional: validates opencode.json, agent files, instructions, protocols on startup.",
+      "source": "observation"
+    },
+    {
+      "file": ".opencode/agent/",
+      "description": "14 agents, all active. All DeepSeek agents migrated from deepseek-chat → deepseek-v4-flash (2026-04-27). coder.md and prompt-writer.md restored. Architect uses cerebras/qwen, explorer uses grok.",
+      "source": "observation"
+    },
+    {
+      "file": "AGENTS.md",
+      "description": "Updated 2026-04-27: full 14-agent roster, all models corrected (all deepseek agents now V4-flash), PATH note fixed to reflect global install, opencode.json config block synced. Previously was stale (listed only 6 agents on old models).",
+      "source": "observation"
+    },
+    {
+      "file": "opencli binary",
+      "description": "DeepSeek V4 reasoning_content round-trip requires model.capabilities.interleaved = { field: 'reasoning_content' }. v1.4.6 lacked V4 in embedded catalog → 400 errors. Fixed by upgrading to 1.14.28 (V4 models in catalog with correct interleaved config).",
+      "source": "observation"
+    },
+    {
+      "file": "core/opencode_service.py",
+      "description": "30-second timeout on all CLI commands (line 21). Model listing or heavy DB queries may timeout on slower systems or large datasets.",
+      "source": "observation"
+    },
+    {
+      "file": "ALL",
+      "description": "Every subprocess call uses shell=True — required for .cmd file execution on Windows, but introduces shell injection risk if any command arguments contain user-controlled characters.",
+      "source": "grep: shell=True"
+    }
+  ],
+  "agent_territory": {
+    "orchestrator": [
+      ".opencode/mission.json",
+      ".opencode/blackboard.json",
+      ".opencode/resume.json",
+      ".opencode/protocols/",
+      ".opencode/features/",
+      "AGENTS.md",
+      ".opencode/project-state.md"
+    ],
+    "coder": [
+      "main.py",
+      "core/",
+      "ui/",
+      "utils/",
+      "assets/",
+      "tests/"
+    ],
+    "ui": [
+      "ui/main_window.py",
+      "ui/dialogs.py",
+      "assets/style.qss",
+      "start.bat"
+    ],
+    "core": [
+      "core/worker.py",
+      "core/opencode_service.py",
+      "core/memory.py",
+      "core/service_worker.py",
+      "utils/helpers.py"
+    ]
+  }
+}

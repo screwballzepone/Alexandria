@@ -1,0 +1,2 @@
+{"time": "2026-05-01T19:04:00Z", "action": "created-state-directory", "files": [".opencode/state/current.json", ".opencode/state/decisions.json", ".opencode/state/blocked.json", ".opencode/state/history.jsonl"], "commit": null, "result": "schema initialized"}
+{"action": "commit", "commit": "19c7f7d", "message": "structured state directory", "files": ["state/", "state_writer.py", "state.md"], "time": "2026-05-01T22:06:52Z"}

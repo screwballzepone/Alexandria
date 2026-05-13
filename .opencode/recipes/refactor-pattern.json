@@ -1,0 +1,11 @@
+{
+  "name": "refactor-pattern",
+  "version": "1.0.0",
+  "description": "Apply a consistent refactoring pattern across the codebase",
+  "parameters": [
+    {"name": "pattern", "type": "string", "description": "What to refactor (e.g., 'replace print with logging')", "required": true},
+    {"name": "target", "type": "string", "description": "Files to target (glob pattern)", "default": "**/*.py"},
+    {"name": "dry_run", "type": "boolean", "description": "Plan only, no changes", "default": true}
+  ],
+  "instructions": "{% if dry_run %}PLAN MODE \u2014 Do NOT modify files. {% endif %}Refactor the codebase: {{pattern}}\n\nScope: files matching '{{target}}'\n\nSteps:\n1. Search for all occurrences of the pattern\n2.{% if dry_run %} Plan the changes needed for each file\n3.{% else %} Apply the refactoring to each file\n3.{% endif %} Verify no behavior changes\n{% if not dry_run %}\n4. Run tests to confirm nothing broke\n{% endif %}"
+}

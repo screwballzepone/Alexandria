@@ -1,0 +1,13 @@
+{
+  "decisions": [
+    {
+      "id": "d1",
+      "question": "How to fix context loss from compression system?",
+      "options": ["Single dev-state.md anchor", "Structured state directory", "Hybrid JSON+MD"],
+      "chosen": "Structured state directory (.opencode/state/)",
+      "rationale": "Recommended by @architect. Scalable, machine-readable, supports partial loading. Avoids monolithic file risks.",
+      "by": "orchestrator",
+      "time": "2026-05-01T19:04:00Z"
+    }
+  ]
+}

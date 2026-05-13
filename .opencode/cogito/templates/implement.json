@@ -1,0 +1,12 @@
+{
+  "objective": "implement",
+  "items": [
+    {"id": "1", "description": "Review design consistency with existing architecture", "mandatory": true},
+    {"id": "2", "description": "Ensure tests exist and cover edge cases", "mandatory": true},
+    {"id": "3", "description": "Verify all imports resolve and follow project conventions", "mandatory": true},
+    {"id": "4", "description": "Run lint check (ruff check .) and fix all issues", "mandatory": true},
+    {"id": "5", "description": "Check for security implications (injection, auth, secrets)", "mandatory": true},
+    {"id": "6", "description": "Verify no dead code or commented-out blocks remain", "mandatory": false},
+    {"id": "7", "description": "Update relevant documentation (AGENTS.md, project-state.md)", "mandatory": false}
+  ]
+}

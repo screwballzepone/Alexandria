@@ -1,0 +1,171 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "anthropic": {
+      "options": {
+        "timeout": 600000,
+        "setCacheKey": true,
+        "baseURL": "https://api.anthropic.com/v1"
+      }
+    },
+    "openrouter": {
+      "options": {
+        "baseURL": "https://openrouter.ai/api/v1"
+      }
+    },
+    "deepseek": {
+      "options": {
+        "baseURL": "https://api.deepseek.com/v1"
+      }
+    },
+    "google": {
+      "options": {
+        "timeout": 600000
+      }
+    },
+    "cerebras": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Cerebras",
+      "options": {
+        "apiKey": "{env:CEREBRAS_API_KEY}",
+        "baseURL": "https://api.cerebras.ai/v1",
+        "timeout": 600000
+      },
+      "models": {
+        "qwen-3-235b-a22b-instruct-2507": {
+          "name": "Qwen 3 235B A22B Instruct (Cerebras)"
+        },
+        "llama3.1-8b": {
+          "name": "Llama 3.1 8B (Cerebras)"
+        }
+      }
+    },
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://localhost:11434/v1"
+      },
+      "models": {
+        "fast3b:latest": {
+          "reasoning": true,
+          "tool_call": true
+        },
+        "qwen3.5:7b": {
+          "reasoning": true,
+          "tool_call": true
+        },
+        "qwen2.5-coder:7b": {
+          "reasoning": false,
+          "tool_call": true
+        },
+        "deepseek-r1:8b": {
+          "reasoning": true,
+          "tool_call": true
+        }
+      }
+    },
+"perplexity": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "{env:PERPLEXITY_API_KEY}",
+        "baseURL": "https://api.perplexity.ai",
+        "timeout": 600000
+      },
+      "models": {
+        "sonar-pro": {
+          "reasoning": false,
+          "tool_call": true
+        },
+        "sonar-reasoning-pro": {
+          "reasoning": true,
+          "tool_call": true
+        }
+      }
+    }
+  },
+  "permission": {
+    "external_directory": "allow"
+  },
+  "model": "deepseek/deepseek-v4-flash",
+  "small_model": "deepseek/deepseek-v4-flash",
+  "default_agent": "orchestrator",
+  "snapshot": true,
+  "autoupdate": "notify",
+  "compaction": {
+    "auto": true,
+    "tail_turns": 2,
+    "preserve_recent_tokens": 50000,
+    "reserved": 1000
+  },
+  "agent": {
+    "title": {
+      "model": "cerebras/llama3.1-8b"
+    }
+  },
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    },
+    "gh_grep": {
+      "type": "remote",
+      "url": "https://mcp.grep.app",
+      "enabled": true
+    },
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {env:EXA_API_KEY}"
+      }
+    }
+  },
+  "instructions": [
+    ".opencode/cogito/identity.md",
+    ".opencode/project-state.md",
+    "C:/Users/lukas/.config/opencode/plugin/shell-strategy/shell_strategy.md"
+  ],
+  "command": {
+    "status": {
+      "description": "Show current project status and pending tasks",
+      "template": "Read MagnumOpus/session-state.md and AGENTS.md. Report: 1) current session goals 2) pending items 3) any tripped circuit breakers. Format as a brief status summary, no more than 20 lines."
+    },
+    "review-all": {
+      "description": "Review all uncommitted changes for bugs and issues",
+      "agent": "reviewer",
+      "template": "Review all uncommitted changes in this repository. Run: bash -c 'git diff'. Check for: bugs, regressions, missing error handling, style issues. Report findings per file. Be concise."
+    },
+    "plan": {
+      "description": "Plan the next task before touching any files",
+      "agent": "orchestrator",
+      "template": "PLAN MODE — do NOT write or edit any files. Analyze this request and produce a step-by-step implementation plan with file paths, functions to change, and expected output format for each step: $ARGUMENTS"
+    },
+    "ci-check": {
+      "description": "Check CI status for the current mission's open PR and diagnose failures",
+      "agent": "orchestrator",
+      "template": "CI CHECK MODE. Run: python .opencode/tools/ci_monitor.py diagnose. Parse the JSON output. If overall == 'pass': report all checks green. If overall == 'fail': for each classification, activate the healing protocol using the failure class and log excerpt as context. After healing, push a fix commit (git_ops.py commit), then run: python .opencode/tools/ci_monitor.py wait to confirm CI passes. Report final status."
+    },
+    "issue-scan": {
+      "description": "Scan GitHub issues, classify by complexity, queue TINY/STANDARD for automation",
+      "agent": "orchestrator",
+      "template": "ISSUE SCAN MODE. Run: python .opencode/tools/issue_monitor.py scan 20. Parse the JSON result. Report: how many issues scanned, how many TINY/STANDARD queued, how many COMPLEX need user input (list their titles), how many SKIP. For COMPLEX issues, ask user: which ones should I handle? Do not start any missions yet — just report and ask."
+    },
+    "issue-run": {
+      "description": "Start missions for queued TINY/STANDARD issues (uses schedule budget)",
+      "agent": "orchestrator",
+      "template": "ISSUE RUN MODE. Run: python .opencode/tools/scheduler.py run. This will pull from the issue queue and start missions with the configured budget. Monitor progress and report final status."
+    },
+    "dep-check": {
+      "description": "Scan all dependencies for outdated versions and CVEs, propose bump PR",
+      "agent": "orchestrator",
+      "template": "DEPENDENCY SCOUT MODE. Dispatch @dependency-scout to: scan Python and Node dependencies for outdated versions and CVEs, write .opencode/dep-scout-report.json, auto-bump safe packages, create a PR if any bumps were made. Report the summary when complete."
+    },
+    "eval": {
+      "description": "Run the eval suite against an agent and compare to baseline",
+      "agent": "orchestrator",
+      "template": "EVAL MODE. Run: python .opencode/tools/eval_runner.py run $ARGUMENTS. Parse the JSON results. Report: overall pass rate, which evals passed/failed, and comparison to baseline (improved / stable / regression). If regression detected (score dropped >5 points), flag it prominently and suggest next steps."
+    }
+  }
+}

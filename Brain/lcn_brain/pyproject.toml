@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lcn-brain"
+version = "0.1.0"
+description = "Language Cognition Network — spiking neural architecture with forward-mode autodiff and plastic memory"
+requires-python = ">=3.10"
+dependencies = [
+    "jax>=0.4.0",
+    "jaxlib>=0.4.0",
+    "flax>=0.8.0",
+    "numpy>=1.24.0",
+    "pyarrow>=14.0.0",  # Parquet diagnostics
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "matplotlib>=3.7.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["lcn_brain*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

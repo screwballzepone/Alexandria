@@ -1,0 +1,53 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys; sys.exit(0)\"",
+            "timeout": 10,
+            "description": "Example: format-on-write placeholder. Replace command with your formatter."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys; sys.exit(0)\"",
+            "timeout": 10,
+            "description": "Example: audit shell commands. Replace with validation script."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import json; print(json.dumps({'decision': 'allow'}))\"",
+            "timeout": 30,
+            "description": "Example: verify task completion. Replace with test suite runner."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys; sys.exit(0)\"",
+            "timeout": 5,
+            "description": "Example: warn on shell commands. PreToolUse is advisory only."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "objective": "refactor",
+  "items": [
+    {"id": "1", "description": "Confirm all existing tests pass before refactoring", "mandatory": true},
+    {"id": "2", "description": "Extract behavior, don't change it — behavior must stay identical", "mandatory": true},
+    {"id": "3", "description": "Verify all imports/callers updated to new locations", "mandatory": true},
+    {"id": "4", "description": "Run full test suite — no regressions", "mandatory": true},
+    {"id": "5", "description": "Check for dead imports or orphaned code after move", "mandatory": true},
+    {"id": "6", "description": "Update AGENTS.md file layout if directory structure changed", "mandatory": false}
+  ]
+}

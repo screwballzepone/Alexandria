@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "nightly": {
+    "enabled": false,
+    "time": "02:00",
+    "mode": "issue-queue",
+    "budget": "$1.00",
+    "model": "google/gemini-2.5-flash",
+    "max_complexity": "STANDARD",
+    "labels_filter": [],
+    "assignee_filter": ""
+  },
+  "on_push": {
+    "enabled": false,
+    "trigger": "main",
+    "mode": "review-all"
+  },
+  "notes": "Set nightly.enabled=true to run automatically. Use scheduler.py run to trigger manually."
+}
