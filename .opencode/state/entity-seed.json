@@ -1,0 +1,68 @@
+[
+  {
+    "entity_type": "Decision",
+    "confidence": 4,
+    "mission_id": "RESTORE-2026-05-13",
+    "file_paths": [".opencode/state/decisions.json", ".opencode/state/current.json"],
+    "chosen_approach": "Structured state directory at .opencode/state/ with JSON files for each state component",
+    "rationale": "Recommended by architect. Scalable, machine-readable, supports partial loading per file. Avoids monolithic dev-state.md rewrite risk on every update. Each state component (current, decisions, history, blocked) lives in its own file for git-diff granularity.",
+    "outcome": "succeeded",
+    "alternatives": [
+      {"approach": "Single dev-state.md anchor file with all state in markdown", "reason_dropped": "Monolithic: full-file rewrite risk on every state update, no partial loading, harder to parse programmatically"},
+      {"approach": "Hybrid single JSON+MD file with embedded markdown sections", "reason_dropped": "Harder to version and diff individual state components; parsing mixed formats is error-prone"}
+    ]
+  },
+  {
+    "entity_type": "Pattern",
+    "confidence": 5,
+    "scope": "codebase-health-audit",
+    "shape_description": "Research or blocked code that doesn't currently work (0 tests passing, missing deps) is incorrectly classified as dead code and deleted during health audits",
+    "when_to_use": "Before any deletion in a health audit or cleanup pass, always grep PIPELINE.md, JANUS-STATE.md, and mission.json for the target path. If referenced in any pipeline phase or marked BLOCKED, skip deletion.",
+    "when_not_to_use": "For CI build artifacts, generated files in .gitignore, node_modules, venv, or truly abandoned code with no pipeline reference and no future phase dependency",
+    "example": "Brain/ directory had 49 tests all failing because JAX was not installed. PIPELINE.md listed it as Phase A-C. Orchestrator deleted it anyway. Restored via git and added BLOCKED != DEAD rule."
+  },
+  {
+    "entity_type": "Pattern",
+    "confidence": 4,
+    "scope": "provider-routing",
+    "shape_description": "Cerebras Qwen provider requests hang indefinitely with no error returned — provider-level timeout issue, not client-side. No error message, agent silently produces zero output.",
+    "when_to_use": "When dispatching to Cerebras-hosted models (qwen-3-235b, llama3.1-8b). Prefer fallback provider (OpenRouter) or configure orchestrator to detect zero output and skip the stalled agent.",
+    "when_not_to_use": "For DeepSeek, Anthropic, OpenRouter, or Google providers which are stable and reliably return output or errors",
+    "example": "Architect on cerebras/qwen-3-235b dispatched for design review; task completed with zero output after 10 minutes. Switched architect to openrouter/qwen-3-235b which worked immediately."
+  },
+  {
+    "entity_type": "Pattern",
+    "confidence": 4,
+    "scope": "configuration",
+    "shape_description": "OpenCode plugin v1.14.31+ expects v2 compaction format keys (tail_turns, preserve_recent_tokens, reserved) but global config at ~/.config/opencode/ may still use v1 keys (keep_first, max_context_window_tokens)",
+    "when_to_use": "When configuring opencode.json compaction section for any agent. Always verify both the project-level and global-level configs use the v2 format. Check plugin version to determine which format is expected.",
+    "when_not_to_use": "For plugin versions before 1.14.31 which correctly used v1 format key names",
+    "example": "Global config had keep_first: 2 and max_context_window_tokens: 50000 while plugin 1.14.31 expected tail_turns: 2 and preserve_recent_tokens: 50000. Compaction silently used wrong defaults."
+  },
+  {
+    "entity_type": "Convention",
+    "confidence": 4,
+    "scope": "state-management",
+    "rule": "All architect-reviewed decisions with multi-file implications must be persisted as Decision entities in the LCN entity store before proceeding to implementation",
+    "why": "Prevents re-deriving the same decisions across sessions. Enables consult.py to retrieve prior context during pre-plan and pre-dispatch phases, eliminating redundant architect dispatches.",
+    "example": "After the structured state directory decision was approved by architect, write_entity({entity_type: Decision, chosen_approach: '.opencode/state/ JSON files', rationale: '...', outcome: 'succeeded'}) was called to persist the decision."
+  },
+  {
+    "entity_type": "Error",
+    "confidence": 5,
+    "failure_class": "model-routing",
+    "file_paths": [".opencode/opencode.json"],
+    "symptom": "Architect on Cerebras qwen-3-235b and reviewer on Google gemini-2.5-flash produced zero output — agents silently failed with no error message or timeout",
+    "root_cause": "Provider-level request hanging: Cerebras and Perplexity providers do not return errors on stall; gemini-2.5-flash too weak for structured tasks. No subagent timeout in opencode.cmd.",
+    "fix_applied": "Switched architect and reviewer to deepseek-v4-flash; added orchestrator stall-detection instructions; configured Perplexity timeout to 600000ms"
+  },
+  {
+    "entity_type": "Error",
+    "confidence": 5,
+    "failure_class": "convention-violation",
+    "file_paths": ["Brain/"],
+    "symptom": "Orchestrator deleted Brain/ directory (56 tracked files, 49 tests) during codebase health audit by classifying it as dead code",
+    "root_cause": "Orchestrator conflated '0 tests pass due to missing JAX dependency' with 'abandoned dead code'. Neither PIPELINE.md nor JANUS-STATE.md were checked before deletion.",
+    "fix_applied": "Restored from git commit b5512ec; added BLOCKED != DEAD rule to orchestrator and explorer agent instructions; updated project-state.md with cleanup safety rule"
+  }
+]

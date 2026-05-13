@@ -1,130 +1,139 @@
 {
-  "mission_id": "RESTORE-2026-05-13",
-  "title": "Project Restoration — git, agents, bugs, docs, config sync",
-  "status": "completed",
+  "mission_id": "MEMORY-V0-2026-05-13",
+  "title": "Track A — Activate SQLite v0 Memory + Consult System",
+  "status": "active",
   "tier": "PROJECT",
-  "created_at": "2026-05-13T00:00:00Z",
-  "last_updated": "2026-05-13T00:05:00Z",
-  "description": "Full project fix-up after cleanup audit destroyed .git/, .opencode/agent/, and left stale references. Restore git repo, sync 22 agent definitions from global source (C:\\Users\\lukas\\.config\\opencode\\agents\\), fix known code bugs, update all documentation to reflect reality, sync project↔global configs, and clean up stale file references.",
+  "created_at": "2026-05-13T00:10:00Z",
+  "last_updated": "2026-05-13T00:10:00Z",
+  "description": "Activate JANUS's memory architecture on SQLite v0. Four scientists converged: JANUS has a fully designed entity schema (Decision, Rejection, Error, Pattern, Convention) but none of it is wired into the orchestrator's decision flow. Resilience score: 22/100. ~8-16K tokens wasted per session on re-discovery. This mission creates the context files, moves entity tools to the active tools directory, backfills the error log, wires 3 consult points into the orchestrator, wires write-back into mission completion, and auto-refreshes world_env.json. The storage backend (SQLite) is deliberately swappable to neural when the LCN Brain passes Phase C validation.",
   "features": [
     {
       "id": "F001",
-      "name": "Reinitialize git repository",
-      "description": ".git/ was destroyed during cleanup audit f1359bf. Reinitialize with proper .gitignore, stage all project files, create initial commit.",
-      "status": "done",
+      "name": "Create .opencode/context/ seed files",
+      "description": "8+ agent prompts reference .opencode/context/ files that don't exist. Create 4 seed files: project-overview.md (architecture, tech stack, conventions), decisions.md (architectural decisions log), conventions.md (code style, import patterns, naming), and a feature template. These are compression-immune — they survive context pruning across sessions.",
+      "status": "pending",
       "depends_on": [],
       "acceptance_criteria": [
-        "git init succeeds in project root",
-        ".gitignore excludes venv/, node_modules/, __pycache__/, .pytest_cache/, *.log, .env*, dist/, build/",
-        "All project source files staged (not venv, not node_modules, not Brain/)",
-        "Initial commit created with message 'chore: restore project after cleanup audit'"
+        ".opencode/context/project-overview.md exists with architecture overview, tech stack, directory layout, key conventions, design decisions",
+        ".opencode/context/decisions.md exists with at least 3 decisions logged (model choice, agent roster, memory architecture)",
+        ".opencode/context/conventions.md exists with code style rules, import patterns, naming conventions, testing patterns",
+        ".opencode/context/feature-MEMORY-V0.md exists with this mission's plan skeleton",
+        "All files use the standard context file format (Purpose, Key Decisions, Files Touched, Constraints, Notes)"
       ],
-      "files": [".gitignore"],
+      "files": [
+        ".opencode/context/project-overview.md",
+        ".opencode/context/decisions.md",
+        ".opencode/context/conventions.md",
+        ".opencode/context/feature-MEMORY-V0.md"
+      ],
       "high_stakes": false
     },
     {
       "id": "F002",
-      "name": "Restore agent definitions from global source",
-      "description": ".opencode/agent/ directory was deleted. Copy all 22 agent .md files + AGENTS.md from C:\\Users\\lukas\\.config\\opencode\\agents\\ to .opencode/agent/. These are the authoritative agent definitions the orchestrator dispatches.",
-      "status": "done",
+      "name": "Move and refurbish entity tools to active directory",
+      "description": "Entity tools exist as reference implementations (MagnumOpus/reference/lcn_write.py, MagnumOpus/reference/capability_assessor.py) and specs (tests/test_lcn_read.py, tests/test_lcn_write.py). Move them to .opencode/tools/, build the missing consult.py orchestrator helper, and ensure all 5 entity types (Decision, Rejection, Error, Pattern, Convention) have read/write paths.",
+      "status": "pending",
       "depends_on": [],
       "acceptance_criteria": [
-        ".opencode/agent/ directory exists with 23 files (22 agents + AGENTS.md)",
-        "All agent files have valid frontmatter (--- delimited, model field present)",
-        "orchestrator.md present with model: opencode-go/deepseek-v4-pro",
-        "coder.md, reviewer.md, test-writer.md present with deepseek-v4-flash",
-        "All 5 scientist agents present: model-scientist, prompt-scientist, system-scientist, failure-scientist, efficiency-scientist",
-        "Content MD5-identical to global source at C:\\Users\\lukas\\.config\\opencode\\agents\\"
+        ".opencode/tools/lcn_write.py exists and imports correctly (moved from MagnumOpus/reference/)",
+        ".opencode/tools/capability_assessor.py exists (moved from reference)",
+        ".opencode/tools/lcn_read.py exists with 5 query types: similar_decisions, related_errors, applicable_conventions, entity_by_key, recent_by_type",
+        ".opencode/tools/consult.py exists with 3 modes: pre_plan, pre_dispatch, post_verify — each queries the entity store and returns structured context",
+        "All 4 tools have valid Python syntax and can be imported",
+        "Existing tests under tests/ still pass (or are updated to new paths)"
       ],
-      "files": [".opencode/agent/*.md"],
-      "high_stakes": true
+      "files": [
+        ".opencode/tools/lcn_write.py",
+        ".opencode/tools/capability_assessor.py",
+        ".opencode/tools/lcn_read.py",
+        ".opencode/tools/consult.py",
+        "MagnumOpus/reference/lcn_write.py",
+        "MagnumOpus/reference/capability_assessor.py"
+      ],
+      "high_stakes": false
     },
     {
       "id": "F003",
-      "name": "Fix known code bugs",
-      "description": "Fix operator precedence bug in Brain/lcn_brain/lcn/readout.py line 84 (u * gate @ W_z.T → (u * gate) @ W_z.T). Fix SSF test trajectory unpacking in test_ssf.py. Fix lcn_jvp import path in Brain/lcn_brain/lcn/testbed/arms.py.",
-      "status": "done",
+      "name": "Backfill error log from lessons.md and known issues",
+      "description": "The error log at .opencode/error-log.jsonl has 1 entry. lessons.md documents multiple incidents (Cerebras stalls, Perplexity stalls, reviewer failures, orchestrator model routing issues, Brain/ deletion incident). Backfill structured entries so the error log is useful for pattern detection. Also seed the entity store with known decisions and patterns from decisions.json and lessons.md.",
+      "status": "pending",
       "depends_on": [],
       "acceptance_criteria": [
-        "readout.py:84 changed to (u * gate) @ W_z.T",
-        "test_ssf.py:107 unpacks scan output correctly",
-        "arms.py adds Brain/ to sys.path before importing lcn_jvp",
-        "lcn_brain tests still pass (87/87)"
+        ".opencode/error-log.jsonl has at least 10 entries covering Cerebras stalls, Perplexity stalls, reviewer failures, model routing issues, Brain/ deletion",
+        "Each entry has valid JSON with error_type, agent_or_tool, context, recovery, severity fields",
+        "Known decisions from .opencode/state/decisions.json are written as Decision entities to the LCN entity store",
+        "Known patterns from lessons.md are written as Pattern entities"
       ],
       "files": [
-        "Brain/lcn_brain/lcn/readout.py",
-        "Brain/lcn_brain/tests/test_ssf.py",
-        "Brain/lcn_brain/lcn/testbed/arms.py"
+        ".opencode/error-log.jsonl",
+        ".opencode/lessons.md",
+        ".opencode/state/decisions.json"
       ],
       "high_stakes": false
     },
     {
       "id": "F004",
-      "name": "Update project documentation",
-      "description": "Sync AGENTS.md, JANUS-STATE.md, .opencode/project-state.md, and .opencode/project-map.json to reflect actual 22-agent roster, current git state, and project reality. Update FILESTRUCTURE.md if stale.",
-      "status": "done",
-      "depends_on": ["F002"],
+      "name": "Wire consult points into orchestrator prompt",
+      "description": "Add 3 consult steps to .opencode/agent/orchestrator.md: (1) pre-plan — query for similar past decisions and applicable patterns, (2) pre-dispatch — query for known pitfalls with the agent/model being dispatched, (3) post-verify — check for applicable conventions after a feature completes. Each step is ≤10 lines and gated by a JANUS_CONSULT_ENABLED env-compatible flag. Also update the SESSION START to read context files.",
+      "status": "pending",
+      "depends_on": ["F001", "F002"],
       "acceptance_criteria": [
-        "AGENTS.md lists 22 agents with correct models",
-        "JANUS-STATE.md reflects restored git repo, 22 agents",
-        "project-state.md systems list is current",
-        "project-map.json agent_territory covers new scientist agents",
-        "All model references use opencode-go/ provider prefix"
+        "orchestrator.md SESSION START step 2b reads .opencode/context/*.md files",
+        "orchestrator.md has consult step before planning (pre-plan, queries similar decisions + patterns)",
+        "orchestrator.md has consult step before dispatch (pre-dispatch, queries known pitfalls for target agent/model)",
+        "orchestrator.md has consult step after feature completion (post-verify, queries applicable conventions)",
+        "All consult steps are gated: skip if consult.py missing or JANUS_CONSULT_DISABLED set",
+        "Global orchestrator.md at ~/.config/opencode/agents/ is synced with project copy"
       ],
       "files": [
-        "AGENTS.md",
-        "JANUS-STATE.md",
-        ".opencode/project-state.md",
-        ".opencode/project-map.json",
-        "FILESTRUCTURE.md"
+        ".opencode/agent/orchestrator.md",
+        "C:\\Users\\lukas\\.config\\opencode\\agents\\orchestrator.md"
       ],
-      "high_stakes": false
+      "high_stakes": true
     },
     {
       "id": "F005",
-      "name": "Sync project↔global configs",
-      "description": "Verify opencode.json matches global config. Check plugin versions, provider configs, MCP servers, and instructions paths. Fix any discrepancies.",
-      "status": "done",
+      "name": "Wire write-back into mission completion",
+      "description": "The mission-completion protocol skill includes a memory write-back step that has never executed because no working entity store exists. Wire it: after a mission completes, write Decision entities for each feature's architectural choices, write Error entities for any failures encountered, write Pattern entities for conventions discovered. Use lcn_write.py as the backend.",
+      "status": "pending",
       "depends_on": ["F002"],
       "acceptance_criteria": [
-        "opencode.json model field is deepseek/deepseek-v4-flash",
-        "All 7 providers present in opencode.json",
-        "Compaction config uses v2 format (tail_turns, preserve_recent_tokens)",
-        "instructions paths resolve to existing files",
-        "Global config discrepancy noted (v1 compaction, needs manual sync)"
+        "mission-completion skill (SKILL.md) step 7 references lcn_write.py with correct path and arguments",
+        "Mission completion writes Decision entities for each feature's key architectural choices",
+        "Mission completion writes Error entities for any failures during the mission",
+        "Graceful degradation: if lcn_write.py fails, log to error-log.jsonl but don't fail the mission",
+        "Skill file at C:\\Users\\lukas\\.config\\opencode\\skills\\mission-completion\\SKILL.md is updated"
       ],
       "files": [
-        ".opencode/opencode.json",
-        ".opencode/package.json",
-        "C:\\Users\\lukas\\.config\\opencode\\package.json"
+        "C:\\Users\\lukas\\.config\\opencode\\skills\\mission-completion\\SKILL.md",
+        ".opencode/tools/lcn_write.py"
       ],
       "high_stakes": false
     },
     {
       "id": "F006",
-      "name": "Clean up stale references",
-      "description": "Remove references to deleted/deprecated files from documentation. Check for broken import paths, dead references to old agent names, and stale file manifests.",
-      "status": "done",
-      "depends_on": ["F004"],
+      "name": "Auto-refresh world_env.json and wire session bootstrap",
+      "description": "world_env.json is 11 days stale — it predates the entire RESTORE-2026-05-13 mission and doesn't reflect the restored git repo, 22 agents, or research files. Add an auto-refresh step to the orchestrator's SESSION START that runs python .opencode/tools/world_env.py scan when world_env.json is older than the most recent git commit.",
+      "status": "pending",
+      "depends_on": [],
       "acceptance_criteria": [
-        "No references to deleted .opencode/agent/ paths in docs",
-        "No references to agents that don't exist",
-        "CONTEXT.md or FILESTRUCTURE.md file counts match reality",
-        "Broken import paths in project docs fixed"
+        "orchestrator.md SESSION START includes a step to check world_env.json freshness",
+        "Uses git log -1 --format=%ct to compare against world_env.json mtime",
+        "Auto-runs world_env.py scan if stale (not if Python unavailable)",
+        "world_env.json is regenerated at mission start to reflect current project state",
+        "Global orchestrator.md synced with project copy"
       ],
       "files": [
-        "AGENTS.md",
-        "JANUS-STATE.md",
-        "FILESTRUCTURE.md",
-        ".opencode/project-map.json",
-        ".opencode/project-state.md"
+        ".opencode/agent/orchestrator.md",
+        "C:\\Users\\lukas\\.config\\opencode\\agents\\orchestrator.md",
+        ".opencode/world_env.json"
       ],
-      "high_stakes": false
+      "high_stakes": true
     }
   ],
   "error_budget": {
-    "max_feature_failures": 2,
-    "max_criteria_failures": 3,
+    "max_feature_failures": 3,
+    "max_criteria_failures": 5,
     "failures_used": 0
   },
   "resume_from": "F001"
