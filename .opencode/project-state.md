@@ -44,4 +44,4 @@
 - Use conventional commits (`fix:`, `feat:`, `chore:`, `docs:`)
 - Prefer concise responses with structured output
 - Always read AGENTS.md for project context
-- **BLOCKED ≠ DEAD** — before deleting code, check PIPELINE.md and JANUS-STATE.md. If a path appears in a pipeline phase or is marked BLOCKED, do NOT delete it. Code that "doesn't work yet" because of missing dependencies is waiting to be resumed, not garbage.
+- **BLOCKED ≠ DEAD** — before deleting code, check PIPELINE.md and JANUS-STATE.md. If a path appears in a pipeline phase or is marked BLOCKED, do NOT delete it. Code that "doesn't work yet" (e.g. Brain/LCN blocked on JAX) is waiting to be resumed, not garbage.

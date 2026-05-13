@@ -1,14 +1,14 @@
 # JANUS — Complete State (2026-05-01)
 
 > **Purpose:** Full-system snapshot for JANUS planning and context.
-> **Generated:** Session 2026-04-30 through 2026-05-01 | **Last commits:** b8e0e4c through f1359bf (cleanup audit)
-> **Updated:** 2026-05-01 — post codebase health audit (Brain/ archived, plugin upgraded to 1.14.31)
+> **Generated:** Session 2026-05-01 through 2026-05-13 | **Last commit:** 59dddbb (restore after cleanup audit)
+> **Updated:** 2026-05-13 — post restoration: .git reinitialized, 23 agent definitions restored from global source, Brain/ preserved
 
 ---
 
 ## WHAT IS JANUS
 
-JANUS is a 17-agent multi-agent coding system built on OpenCode CLI (v1.14.31), wrapped in a PySide6 desktop GUI (plugin 1.14.31, compaction v2 format). It decomposes tasks through a tiered classification system (READ→TINY→STANDARD→COMPLEX→PROJECT→RESEARCH), routes to specialized subagents, and executes multi-session missions with protocol-driven lifecycle management.
+JANUS is a 22-agent multi-agent coding system built on OpenCode CLI (v1.14.31), wrapped in a PySide6 desktop GUI (plugin 1.14.31, compaction v2 format). It decomposes tasks through a tiered classification system (READ→TINY→STANDARD→COMPLEX→PROJECT→RESEARCH), routes to specialized subagents, and executes multi-session missions with protocol-driven lifecycle management.
 
 The name "JANUS" reflects its dual nature: a coding agent system AND a creative writing/prompt engineering workstation (via `@prompt-writer` for clank.world character profiles).
 
@@ -44,29 +44,34 @@ Worker signals: `text_received`, `tool_started`, `tool_finished`, `error_receive
 
 Worker `send_input()` full signature: `send_input(text, model=None, agent=None, file=None, plan_mode=False, slash_command=False, fork=False, title=None)`
 
-### Layer 3: Agent Roster (17 agents)
+### Layer 3: Agent Roster (22 agents)
 
 | # | Agent | Model | Role | Score | Issues |
 |---|-------|-------|------|-------|--------|
-| 1 | **orchestrator** (PRIMARY) | deepseek/deepseek-v4-flash | Decompose, route, synthesize. Never writes code | — | 397-line prompt, 6 skills |
-| 2 | coder | deepseek/deepseek-v4-flash | All code writes | 8/10 | Needs structured report format |
-| 3 | nano-coder | deepseek/deepseek-v4-flash | Tier 1 patches, pre-flight read-only | 9/10 | — |
-| 4 | explorer | openrouter/x-ai/grok-4.20-beta | Context gathering, codebase scans | 9/10 | — |
-| 5 | architect | openrouter/qwen/qwen3-235b-a22b-07-25 | Design review, adversarial design | 6→8/10 | Was Cerebras (stalls). Upgraded to OpenRouter |
-| 6 | reviewer | deepseek/deepseek-v4-flash | Code/plan review, quality gatekeeper | 8→9/10 | Added JSON failure fallback |
-| 7 | researcher | perplexity/sonar-reasoning-pro | Web research, external docs | 8/10 | Perplexity stalls intermittently |
-| 8 | prompt-writer | deepseek/deepseek-v4-flash | PList/Ali:Chat, creative writing | 7/10 | — |
-| 9 | test-writer | deepseek/deepseek-v4-flash | TDD: write failing tests before coder | 7→8/10 | Added edge case + fallback rules |
-| 10 | security-auditor | deepseek/deepseek-v4-flash | Post-merge: injection/auth/secrets/CVE | 9/10 | — |
-| 11 | documenter | deepseek/deepseek-v4-flash | Post-commit: docstring + docs sync | 7/10 | — |
-| 12 | dependency-scout | deepseek/deepseek-v4-flash | Weekly: outdated packages + CVEs | 7/10 | — |
-| 13 | lessons | deepseek/deepseek-v4-flash | Post-mission: retrospective to lessons.md | 7/10 | — |
-| 14 | onboarder | deepseek/deepseek-v4-flash | One-time: project-map.json generator | 7/10 | — |
-| 15 | meta-agent | deepseek/deepseek-v4-flash | Post-mission: agent prompt optimization | 7/10 | — |
-| 16 | memory-writer | deepseek/deepseek-v4-flash | Post-mission: LCN memory writes | 7/10 | — |
-| 17 | context-optimizer | (global-only) | Context deduplication | — | Not in project, global only |
+| 1 | **orchestrator** (PRIMARY) | opencode-go/deepseek-v4-pro | Task decomposition, routing, synthesize. Never writes code | — | 419-line prompt, 6 skills |
+| 2 | coder | opencode-go/deepseek-v4-flash | All code writes | 8/10 | Needs structured report format |
+| 3 | explorer | opencode-go/deepseek-v4-flash | Context gathering, codebase scans | 9/10 | — |
+| 4 | architect | opencode-go/deepseek-v4-flash | Design review, system architecture | 8/10 | Moved from Cerebras/OpenRouter to DeepSeek V4 Flash |
+| 5 | reviewer | opencode-go/deepseek-v4-flash | Code/plan review, quality gatekeeper | 8→9/10 | Added JSON failure fallback |
+| 6 | nano-coder | opencode-go/deepseek-v4-flash | Tier 1 patches, pre-flight read-only | 9/10 | — |
+| 7 | test-writer | opencode-go/deepseek-v4-flash | TDD: write failing tests before coder | 7→8/10 | Added edge case + fallback rules |
+| 8 | researcher | opencode-go/deepseek-v4-flash | Web research, external docs | 8/10 | — |
+| 9 | security-auditor | opencode-go/deepseek-v4-flash | Post-merge: injection/auth/secrets/CVE | 9/10 | — |
+| 10 | efficiency-scientist | opencode-go/deepseek-v4-flash | Token/cost profiling, compaction research | 7/10 | New in roster |
+| 11 | system-scientist | opencode-go/deepseek-v4-pro | Multi-agent orchestration, protocol research | 7/10 | New in roster |
+| 12 | failure-scientist | opencode-go/qwen3.6-plus | Error log mining, failure classification | 7/10 | New in roster |
+| 13 | meta-agent | opencode-go/qwen3.5-plus | Post-mission: prompt/model routing updates | 7/10 | — |
+| 14 | onboarder | opencode-go/qwen3.5-plus | One-time: project-map.json generator | 7/10 | — |
+| 15 | model-scientist | opencode-go/glm-5.1 | Model evaluation, provider release tracking | 7/10 | New in roster |
+| 16 | prompt-scientist | opencode-go/mimo-v2.5-pro | A/B test prompts, quality measurement | 7/10 | New in roster |
+| 17 | prompt-writer | opencode-go/mimo-v2.5-pro | PList/Ali:Chat character profiles, creative writing | 7/10 | — |
+| 18 | context-optimizer | opencode-go/minimax-m2.5 | Context compaction and pruning | 7/10 | Restored to project |
+| 19 | dependency-scout | opencode-go/minimax-m2.5 | Weekly: outdated packages + CVEs | 7/10 | — |
+| 20 | documenter | opencode-go/minimax-m2.5 | Post-commit: docstring + docs sync | 7/10 | — |
+| 21 | lessons | opencode-go/minimax-m2.5 | Post-mission: retrospective | 7/10 | — |
+| 22 | memory-writer | opencode-go/minimax-m2.5 | Post-mission: persistent memory writes | 7/10 | — |
 
-All 16 project agents synced globally ↔ project (MD5 identical). All have `skill: true` in frontmatter.
+All 21 project agents restored from global source. All have `skill: true` in frontmatter.
 
 ### Layer 4: Skills (6 load-on-demand)
 
@@ -158,7 +163,7 @@ All 16 project agents synced globally ↔ project (MD5 identical). All have `ski
 
 | Metric | Value |
 |--------|-------|
-| Agents | 17 (1 primary + 16 subagents) |
+| Agents | 22 (1 primary + 21 subagents) |
 | Skills | 6 load-on-demand |
 | Plugins | 4 (3 npm + 1 instruction) |
 | MCP servers | 3 |
@@ -166,7 +171,7 @@ All 16 project agents synced globally ↔ project (MD5 identical). All have `ski
 | Local GPU models | 5 (qwen2.5-coder:7b, deepseek-r1:8b, fast3b, llama3.2:3b/1b) |
 | Tools/scripts | 18 |
 | OpenCode CLI | v1.14.31 (plugin 1.14.31, compaction v2) |
-| Git commits | ~79 (conventional commit style) |
+| Git commits | ~80 (conventional commit style, history reset at 59dddbb) |
 | Orchestrator prompt | 419 lines (down from 506 after skills extraction) |
 | Total Python (project) | ~2,200 lines (GUI + worker + core modules + tools + tests) |
 | Config lines (JSON) | ~168 (opencode.json) |
@@ -179,7 +184,7 @@ All 16 project agents synced globally ↔ project (MD5 identical). All have `ski
 
 | # | Issue | Impact | Status |
 |---|-------|--------|--------|
-| 1 | **Brain/LCN archived** — Brain/ directory deleted in codebase health audit. LCN integration deferred to future project. | LCN memory system offline | ARCHIVED — Brain/ removed, SQLite v0 LCN tools remain functional |
+| 1 | **Brain/LCN integration blocked** — Brain/ directory preserved (not deleted), but blocked on JAX/flax dependency (PIPELINE.md Phases A–C). 49 tests written, 0 passing. | LCN memory system offline | BLOCKED — Brain/lcn_brain/ preserved, JAX not installed |
 | 2 | **Perplexity config corruption** — apiKey field eaten by vibeguard. Fixed to env var reference but key not yet re-set by user | @researcher may fail silently | WAITING — user needs to set PERPLEXITY_API_KEY env var |
 
 ### Severity: HIGH
@@ -227,6 +232,12 @@ For full unblocking steps, see PIPELINE.md Phases A–C.
 
 ## CURRENT PRIORITIES
 
+### RESTORE-2026-05-13: Post-cleanup restoration (IN PROGRESS)
+- Git reinitialized (commit 59dddbb) — history lost
+- 23 agent definition files restored from global source
+- Brain/ directory verified intact, not deleted
+- All docs updated to reflect 22-agent roster
+
 ### Phase F: GUI stretch goals (3 remaining items)
 - Mission tab live status (auto-refresh, blackboard log lines)
 - Memory tab supermemory integration (search, delete)
@@ -259,7 +270,7 @@ C:\Users\lukas\OneDrive\Documentos\OpenCode\
 │   ├── lessons.md                             # Session retrospectives
 │   ├── project-state.md                       # Systems documentation
 │   ├── error-log.jsonl                        # Error log (runtime)
-│   ├── agent/                                 # 18 agent definitions
+│   ├── agent/                                 # 22 agent definitions (+ AGENTS.md)
 │   │   └── orchestrator.md                    # 419-line orchestrator prompt
 │   ├── skills/                                # 6 skill files
 │   ├── commands/                              # 3 slash command files
@@ -289,20 +300,13 @@ C:\Users\lukas\OneDrive\Documentos\OpenCode\
 
 ---
 
-## RECENT GIT HISTORY (last 10 commits)
+## RECENT GIT HISTORY
 
 ```
-f1359bf chore: phase 1-6 codebase health audit — remove 142K dead files, fix lint, update docs
-b5512ec chore: cleanup old test artifacts
-79a36b4 chore(deps): bump @opencode-ai/plugin 1.4.6 → 1.14.31, update compaction config, document global vs local plugin
-b8e0e4c feat(ollama): add qwen2.5-coder:7b + deepseek-r1:8b local models
-5e11339 feat: error logging system + agent prompt audit fixes
-c6e6fcd fix: config, model upgrades, global sync
-f72d21f feat: directory AGENTS.md, file-based slash commands, plan/act mode
-a5b1f44 fix: add Perplexity timeout, stall handling, lessons tracking
-3fa3269 feat: competitive analysis-driven systems — hooks, repomap, recipes, rules, skills
-804dea2 fix(git_ops): reset index before explicit-path staging in commit()
+59dddbb chore: restore project after cleanup audit — git init, 23 agent definitions, .gitignore
 ```
+
+**Note:** All prior history (f1359bf...804dea2) was lost when .git/ was removed during the cleanup audit. Git was reinitialized at commit 59dddbb on 2026-05-13. The prior 79+ commits are no longer in the git history but their effects remain in the working tree.
 
 ---
 

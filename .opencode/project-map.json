@@ -196,12 +196,12 @@
     },
     {
       "file": ".opencode/agent/",
-      "description": "14 agents, all active. All DeepSeek agents migrated from deepseek-chat → deepseek-v4-flash (2026-04-27). coder.md and prompt-writer.md restored. Architect uses cerebras/qwen, explorer uses grok.",
+      "description": "22 agents, all restored from global source 2026-05-13. Architect now uses DeepSeek V4 Flash (was Cerebras/OpenRouter), explorer now DeepSeek V4 Flash (was Grok). 6 new scientist agents added. See AGENTS.md for full roster.",
       "source": "observation"
     },
     {
       "file": "AGENTS.md",
-      "description": "Updated 2026-04-27: full 14-agent roster, all models corrected (all deepseek agents now V4-flash), PATH note fixed to reflect global install, opencode.json config block synced. Previously was stale (listed only 6 agents on old models).",
+      "description": "Updated 2026-05-13: full 22-agent roster with correct model strings from global agent frontmatter. Orchestrator now DeepSeek V4 Pro. All deepseek agents use opencode-go/deepseek-v4-flash. Removed math-verifier.md and vision.md (not in project).",
       "source": "observation"
     },
     {
@@ -250,6 +250,23 @@
       "core/memory.py",
       "core/service_worker.py",
       "utils/helpers.py"
+    ],
+    "efficiency-scientist": [
+      ".opencode/error-log.jsonl",
+      ".opencode/lessons.md"
+    ],
+    "failure-scientist": [
+      ".opencode/error-log.jsonl"
+    ],
+    "model-scientist": [
+      ".opencode/opencode.json"
+    ],
+    "prompt-scientist": [
+      ".opencode/agent/"
+    ],
+    "system-scientist": [
+      ".opencode/protocols/",
+      ".opencode/mission.json"
     ]
   }
 }

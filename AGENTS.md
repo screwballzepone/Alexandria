@@ -80,25 +80,30 @@ OpenCode/
 │   └── test_capability_assessor.py  # Tests for capability_assessor.py
 ├── .opencode/
 │   ├── opencode.json          # OpenCode config: default model, small_model, provider options
-│   ├── agent/                 # 18 agent definition files (frontmatter + system prompt)
-│   │   ├── orchestrator.md    # PRIMARY agent — DeepSeek V4 Flash, decomposes tasks, routes to subagents
-│   │   ├── coder.md           # Subagent — DeepSeek V4 Flash, writes/edits code
-│   │   ├── explorer.md        # Subagent — Grok 4.20 Beta (via OpenRouter), scans files and structure
-│   │   ├── architect.md       # Subagent — Cerebras Qwen 3 235B, complex design decisions only
-│   │   ├── reviewer.md        # Subagent — DeepSeek V4 Flash, code quality gatekeeper
-│   │   ├── prompt-writer.md   # Subagent — DeepSeek V4 Flash, PList/Ali:Chat character profiles
-│   │   ├── nano-coder.md      # Subagent — DeepSeek V4 Flash, read-only minimal assistant
-│   │   ├── test-writer.md     # Subagent — DeepSeek V4 Flash, TDD test writer
-│   │   ├── math-verifier.md   # Subagent — DeepSeek V4 Flash, math correctness specialist
-│   │   ├── vision.md          # Subagent — GPT-4o, vision/plot/screenshot analysis
-│   │   ├── security-auditor.md # Subagent — DeepSeek V4 Flash, post-merge security scanner
-│   │   ├── documenter.md      # Subagent — DeepSeek V4 Flash, post-commit doc sync
-│   │   ├── dependency-scout.md # Subagent — DeepSeek V4 Flash, weekly dep scanner
-│   │   ├── lessons.md         # Subagent — DeepSeek V4 Flash, post-mission retrospective
-│   │   ├── onboarder.md       # Subagent — DeepSeek V4 Flash, codebase explorer
-│   │   ├── meta-agent.md      # Subagent — DeepSeek V4 Flash, post-mission prompt editor
-│   │   ├── researcher.md      # Subagent — DeepSeek V4 Flash, in-depth research agent
-│   │   └── memory-writer.md   # Subagent — DeepSeek V4 Flash, persistent memory writer
+│   ├── agent/                 # 22 agent definition files (frontmatter + system prompt)
+│   │   ├── AGENTS.md          # Environment reference (not an agent)
+│   │   ├── orchestrator.md    # PRIMARY — DeepSeek V4 Pro, task decomposition
+│   │   ├── coder.md           # DeepSeek V4 Flash, code generation
+│   │   ├── explorer.md        # DeepSeek V4 Flash, codebase scanning
+│   │   ├── architect.md       # DeepSeek V4 Flash, design decisions
+│   │   ├── reviewer.md        # DeepSeek V4 Flash, code review
+│   │   ├── nano-coder.md      # DeepSeek V4 Flash, read-only minimal
+│   │   ├── test-writer.md     # DeepSeek V4 Flash, TDD test writer
+│   │   ├── researcher.md      # DeepSeek V4 Flash, web research
+│   │   ├── security-auditor.md # DeepSeek V4 Flash, security scanning
+│   │   ├── efficiency-scientist.md # DeepSeek V4 Flash, token/cost analysis
+│   │   ├── system-scientist.md    # DeepSeek V4 Pro, orchestration research
+│   │   ├── failure-scientist.md   # Qwen 3.6 Plus, error pattern mining
+│   │   ├── meta-agent.md      # Qwen 3.5 Plus, prompt improvement
+│   │   ├── onboarder.md       # Qwen 3.5 Plus, project-map generator
+│   │   ├── model-scientist.md # GLM 5.1, model landscape research
+│   │   ├── prompt-scientist.md # Mimo V2.5 Pro, prompt A/B testing
+│   │   ├── prompt-writer.md   # Mimo V2.5 Pro, creative writing
+│   │   ├── context-optimizer.md # MiniMax M2.5, context compaction
+│   │   ├── dependency-scout.md # MiniMax M2.5, weekly dep scanner
+│   │   ├── documenter.md      # MiniMax M2.5, post-commit docs
+│   │   ├── lessons.md         # MiniMax M2.5, post-mission retrospective
+│   │   └── memory-writer.md   # MiniMax M2.5, persistent memory
 │   └── tools/                 # 23 CLI tool scripts for automation, CI, quality, and mission management
 │       ├── project_map.py
 │       ├── git_ops.py
@@ -114,26 +119,32 @@ OpenCode/
 
 ## The Agent System
 
-OpenCode runs a **17-agent multi-agent system**. The orchestrator is the primary agent; all others are subagents.
+OpenCode runs a **22-agent multi-agent system**. The orchestrator is the primary agent; all others are subagents.
 
 | Agent | Model | Role | When Used |
 |-------|-------|------|-----------|
-| orchestrator | deepseek/deepseek-v4-flash | Decomposes tasks, routes to subagents. NEVER writes code itself. | Always (primary) |
-| coder | deepseek/deepseek-v4-flash | Writes/edits/creates code files | All code generation |
-| explorer | openrouter/x-ai/grok-4.20-beta | Scans dirs, reads files, maps structure | Before coding on unfamiliar code |
-| architect | openrouter/qwen/qwen3-235b-a22b-07-25 | Complex design decisions, multi-file architecture | Only for decisions affecting 5+ files |
-| reviewer | deepseek/deepseek-v4-flash | Code review: correctness, types, security, style | After significant changes |
-| prompt-writer | deepseek/deepseek-v4-flash | PList/Ali:Chat character profiles, narrator engine sections | For clank.world creative work |
-| nano-coder | deepseek/deepseek-v4-flash | Read-only minimal assistant for low-token tasks | Single-shot code lookups |
-| test-writer | deepseek/deepseek-v4-flash | TDD test writer — writes failing tests before coder | Before new features |
-| math-verifier | deepseek/deepseek-v4-flash | Math correctness — gradient checks, Taylor tests, invariant assertions | On math-heavy code changes |
-| vision | openrouter/openai/gpt-4o | Vision specialist — analyzes images, plots, screenshots, diagrams | When visual data needs interpretation |
-| security-auditor | deepseek/deepseek-v4-flash | Post-merge injection/auth/secrets/CVE scanner | After merges |
-| documenter | deepseek/deepseek-v4-flash | Post-commit doc sync — updates docstrings and docs | After commits |
-| dependency-scout | deepseek/deepseek-v4-flash | Weekly dependency scanner — finds outdated packages, CVEs | Weekly |
-| lessons | deepseek/deepseek-v4-flash | Post-mission retrospective — records lessons learned | After missions |
-| onboarder | deepseek/deepseek-v4-flash | One-time codebase explorer — generates project-map.json | New projects |
-| meta-agent | deepseek/deepseek-v4-flash | Post-mission prompt editor — proposes agent prompt updates | After missions |
+| orchestrator (PRIMARY) | opencode-go/deepseek-v4-pro | Task decomposition, routing, synthesize. NEVER writes code. | Always |
+| coder | opencode-go/deepseek-v4-flash | Writes/edits/creates code files | All code generation |
+| explorer | opencode-go/deepseek-v4-flash | Codebase scanning, context gathering | Before coding on unfamiliar code |
+| architect | opencode-go/deepseek-v4-flash | Complex design decisions, multi-file architecture | Only for 5+ files or conflicting outputs |
+| reviewer | opencode-go/deepseek-v4-flash | Code/plan review, quality gatekeeper | After significant changes |
+| nano-coder | opencode-go/deepseek-v4-flash | Read-only minimal assistant for low-token tasks | Single-shot code lookups |
+| test-writer | opencode-go/deepseek-v4-flash | TDD test writer — writes failing tests before coder | Before new features |
+| researcher | opencode-go/deepseek-v4-flash | Web research, external documentation | Research tasks |
+| security-auditor | opencode-go/deepseek-v4-flash | Post-merge injection/auth/secrets/CVE scanner | After merges |
+| efficiency-scientist | opencode-go/deepseek-v4-flash | Token usage & API cost profiling, compaction research | Optimization tasks |
+| system-scientist | opencode-go/deepseek-v4-pro | Multi-agent orchestration, protocol design research | Architecture research |
+| failure-scientist | opencode-go/qwen3.6-plus | Error log mining, failure mode classification | Error investigation |
+| meta-agent | opencode-go/qwen3.5-plus | Post-mission prompt edits, model routing updates | After missions |
+| onboarder | opencode-go/qwen3.5-plus | One-time project-map.json generator | New projects |
+| model-scientist | opencode-go/glm-5.1 | AI model evaluation, provider release tracking | Model selection |
+| prompt-scientist | opencode-go/mimo-v2.5-pro | A/B test agent prompts, measure output quality | Prompt engineering |
+| prompt-writer | opencode-go/mimo-v2.5-pro | PList/Ali:Chat character profiles, creative writing | For clank.world creative work |
+| context-optimizer | opencode-go/minimax-m2.5 | Context compaction and pruning | Large conversation management |
+| dependency-scout | opencode-go/minimax-m2.5 | Weekly outdated packages + CVEs scan | Weekly |
+| documenter | opencode-go/minimax-m2.5 | Post-commit docstring and docs sync | After commits |
+| lessons | opencode-go/minimax-m2.5 | Post-mission retrospective | After missions |
+| memory-writer | opencode-go/minimax-m2.5 | Persistent memory writes to LCN/SQLite | After missions |
 
 **Orchestrator workflow:** UNDERSTAND → EXPLORE (@explorer) → PLAN → EXECUTE (@coder) → REVIEW (@reviewer) → REPORT
 

@@ -219,15 +219,13 @@ C:\Users\lukas\.opencode\              ✅ EXISTS      GLOBAL user config (binar
 ├── package-lock.json                  # config       npm lockfile
 ├── .gitignore                         # config       Git ignore rules
 │
-├── agents/                            # agent-def    Global agent definitions (8 agents — OUTDATED)
-│   ├── orchestrator.md                # agent-def    model: google/gemini-2.5-flash (OLD, 37 lines)
-│   ├── coder.md                       # agent-def    model: openrouter/minimax/minimax-m2.5 (OLD, 23 lines)
-│   ├── explorer.md                    # agent-def    Global explorer (655 bytes)
-│   ├── architect.md                   # agent-def    Global architect (887 bytes)
-│   ├── reviewer.md                    # agent-def    Global reviewer (880 bytes)
-│   ├── prompt-writer.md               # agent-def    Global prompt-writer (805 bytes)
-│   ├── nano-coder.md                  # agent-def    Global nano-coder (1071 bytes)
-│   └── context-optimizer.md           # agent-def    Global context-optimizer (1094 bytes, NOT in project)
+├── agents/                            # agent-def    Global agent definitions (23 files — synced 2026-05-13)
+│   ├── orchestrator.md                # agent-def    model: opencode-go/deepseek-v4-pro (PRIMARY)
+│   ├── coder.md                       # agent-def    model: opencode-go/deepseek-v4-flash
+│   ├── explorer.md                    # agent-def    model: opencode-go/deepseek-v4-flash
+│   ├── architect.md                   # agent-def    model: opencode-go/deepseek-v4-flash
+│   ├── reviewer.md                    # agent-def    model: opencode-go/deepseek-v4-flash
+│   ├── + 18 more agents               # agent-def    full 22-agent JANUS roster
 │
 └── node_modules/                      # deps         npm plugin dependencies (@opencode-ai/plugin, @opencode-ai/sdk)
 
@@ -325,10 +323,10 @@ MagnumOpus/reference/         Missing lcn_jvp dependency
 Priority (highest to lowest):
 1. CLI flags (--model, --agent, --provider)
 2. Project-local .opencode/opencode.json          ← workspace root
-3. Project-local .opencode/agent/*.md             ← 15 agents (comprehensive, V4 models)
-4. Global ~/.opencode/opencode.json               ← user config (providers only, no model default)
-5. Global ~/.opencode/agents/*.md                 ← 8 agents (OUTDATED stubs, old models)
-6. Global ~/.config/opencode/                     ← plugin directory (npm only, no config)
+3. Project-local .opencode/agent/*.md             ← 22 agents (full JANUS roster)
+4. Global ~/.opencode/opencode.json               ← user config (providers only, no model default; ⚠️ v1 compaction format)
+5. Global ~/.config/opencode/agents/*.md          ← 22 agents (synced from project 2026-05-13)
+6. Global ~/.config/opencode/                     ← plugin directory (npm packages)
 7. Binary built-in defaults                       ← hardcoded fallbacks
 ```
 
@@ -359,4 +357,4 @@ Priority (highest to lowest):
 | `researcher.md` | ✅ NOW IN GLOBAL | ✅ in project | **SYNCED** |
 | `context-optimizer.md` | ✅ Preserved | ❌ NOT IN PROJECT | **GLOBAL-ONLY** |
 
-**17 agents in `~/.opencode/agents/`** — 16 from project + 1 global-only (`context-optimizer`).
+**22 agents in `.opencode/agent/` and `~/.config/opencode/agents/`** — 22 project agents + 1 global-only (`context-optimizer`).
