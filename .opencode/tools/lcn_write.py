@@ -1,18 +1,16 @@
-"""lcn_write.py — LCN entity write module (reference implementation)
+"""lcn_write.py — LCN entity write module
 
 Authority:
   MagnumOpus/LCN-SCHEMA.md (entity shapes, natural keys, idempotency)
   MagnumOpus/failure-classes.md (bounded Error taxonomy)
   MagnumOpus/TWO-MINDS.md §3.2
 
-This is the write-side module for LCN. It validates and persists the five
-entity types (Decision, Rejection, Error, Pattern, Convention) to SQLite.
+This is the write-side module for the LCN entity store. It validates and persists
+the five entity types (Decision, Rejection, Error, Pattern, Convention) to SQLite.
 Writes are idempotent on the natural keys defined in LCN-SCHEMA.md.
 
-This file currently lives in MagnumOpus/reference/ as specification code.
-When batch 22 unblocks the smoke test and we start wiring LCN writes into
-the orchestrator, move this file to `.opencode/tools/lcn_write.py` and add
-tests under `.opencode/tests/`.
+Deployed from MagnumOpus/reference/lcn_write.py. Reference copy retained there
+per BLOCKED ≠ DEAD rule.
 
 Design choices:
   - SQLite stdlib only, no ORM. Portability over ergonomics.
@@ -20,8 +18,7 @@ Design choices:
     natural_key + entity_type. Schema stays simple and extensible.
   - ULID generation is inline (no third-party dep).
   - Validation errors raise ValidationError (subclass of ValueError).
-  - No reads exposed here; that's CONSULT-PROTOCOL.md's scope and will
-    live in lcn_read.py when built.
+  - Read-side lives in lcn_read.py and consult.py (CLI).
 """
 
 from __future__ import annotations

@@ -67,7 +67,7 @@ The system has three distinct subsystems:
 | Linting | ruff | latest |
 | Testing | pytest | 9.x |
 | Memory (GUI) | SQLite via AgentMemory class | stdlib |
-| Memory (LCN) | SQLite via lcn_write.py | stdlib, .lcn/lcn.sqlite |
+| Memory (LCN) | SQLite via lcn_write.py | stdlib, ~/.local/share/opencode/lcn_memory.db |
 | Neural (Brain) | JAX + Flax | BLOCKED — needs install |
 | ORM | None (raw SQLite) | 0 ORM deps |
 

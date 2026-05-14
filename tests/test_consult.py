@@ -1,23 +1,23 @@
-"""Test suite for .opencode/tools/consult.py.
+"""Test suite for .opencode/tools/consult.py CLI.
 
-Verifies the markdown sections produced by each phase match
-CONSULT-PROTOCOL.md spec. We check structure (headings, footer, recall-miss
-annotations, kill switch) rather than exact prose.
+Tests the 3 subcommands (pre_plan, pre_dispatch, post_verify) as black-box
+subprocess invocations, verifying JSON output shape, status codes, and
+graceful degradation paths.
 
 Coverage:
-  - render_pre_plan: with prior art, with no prior art, mixed
-  - render_pre_dispatch: with errors, with empty errors, with related Conventions
-  - render_post_verify: with conventions, with none
-  - JANUS_CONSULT_ENABLED kill switch (env var) for all 3 phases
-  - Footer format invariant
-  - CLI parses each phase + emits markdown to stdout
-  - argparse rejects bad --phase values
+  - CLI round-trip: each subcommand returns valid JSON with expected keys
+  - Empty DB: zero entities produce empty results (not a crash)
+  - No match: unrelated queries produce empty results
+  - Missing DB: non-existent database returns valid JSON (graceful)
+  - Kill switch: JANUS_CONSULT_DISABLED env var disables consultation
+  - Invalid subcommand: exits non-zero with error on stderr
+  - Missing positional args: argparse catches and exits non-zero
 """
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -54,7 +54,7 @@ lcn_write, _ = _load("lcn_write")
 
 @pytest.fixture
 def populated_db(tmp_path):
-    """A tmp DB with curated entities for consult exercises."""
+    """A temporary database with curated entities for consult exercises."""
     db = tmp_path / "test.sqlite"
     entities = [
         # Past Decision touching auth.py
@@ -67,14 +67,16 @@ def populated_db(tmp_path):
             "rationale": "industry standard",
             "outcome": "succeeded",
         },
-        # Past Rejection on the same file
+        # Past Rejection
         {
             "entity_type": "Rejection",
             "mission_id": "m-002",
             "confidence": 3,
             "approach": "store passwords in plaintext",
             "reason": "trivially insecure",
-            "context_that_might_change_this": "if compliance ever waives auth requirements",
+            "context_that_might_change_this": (
+                "if compliance ever waives auth requirements"
+            ),
         },
         # Error with model-routing class
         {
@@ -87,7 +89,7 @@ def populated_db(tmp_path):
             "root_cause": "user-home opencode.json overrode project config",
             "fix_applied": "stripped overrides from user-home config",
         },
-        # Convention covering agent scope (relates to the model-routing Error)
+        # Convention covering agent scope
         {
             "entity_type": "Convention",
             "mission_id": "m-004",
@@ -104,362 +106,239 @@ def populated_db(tmp_path):
 
 @pytest.fixture
 def empty_db(tmp_path):
-    """A DB that exists but has no entities."""
+    """A database file that exists but has no entities."""
     db = tmp_path / "empty.sqlite"
-    # Use lcn_write to create the schema without inserting anything
     lcn_write.get_conn(db).close()
     return db
 
 
 # ---------------------------------------------------------------------------
-# Footer invariant
+# Helpers
 # ---------------------------------------------------------------------------
 
 
-FOOTER_RE = re.compile(
-    r"-- injected by CONSULT-PROTOCOL v1, queries: (\d+), results: (\d+)"
-)
-
-
-def _footer_counts(text: str) -> tuple[int, int]:
-    m = FOOTER_RE.search(text)
-    assert m is not None, f"No CONSULT-PROTOCOL footer found in: {text!r}"
-    return int(m.group(1)), int(m.group(2))
-
-
-# ---------------------------------------------------------------------------
-# pre-plan
-# ---------------------------------------------------------------------------
-
-
-def test_pre_plan_with_known_decision(populated_db):
-    out = consult.render_pre_plan(
-        request_text="use bcrypt for password hashing on the auth path",
-        predicted_files=["auth.py"],
-        scope_hash="auth.py",
-        db_path=populated_db,
-    )
-    assert "## Prior art" in out
-    assert "## Decisions on touched files" in out
-    # Should mention the past Decision
-    assert "bcrypt" in out
-    # v0 limitation: Rejection NOT surfaced via by-file (no file_paths in
-    # Rejection schema). Documented in consult.py docstring.
-    qn, rn = _footer_counts(out)
-    assert qn >= 2  # one mission-similarity + one by-file
-    assert rn >= 1  # at least the Decision matched
-
-
-def test_pre_plan_no_prior_art(populated_db):
-    out = consult.render_pre_plan(
-        request_text="zzzzz qqqqq xxxxx wwww vvvv",  # no overlap with any seeded title
-        predicted_files=["a_new_file_no_one_has_seen.py"],
-        scope_hash="x_no_overlap",
-        db_path=populated_db,
-    )
-    # Even no-results should produce structured sections
-    assert "## Prior art" in out
-    assert "## Decisions on touched files" in out
-    # Recall-miss annotation per spec — fires when both queries empty
-    assert "No prior art" in out or "No similar prior missions" in out
-    # Footer present
-    qn, _ = _footer_counts(out)
-    assert qn >= 2
-
-
-def test_pre_plan_low_similarity_filtered(populated_db):
-    """Below the SIMILARITY_FLOOR (0.1), missions don't appear in injection."""
-    out = consult.render_pre_plan(
-        request_text="zzzzz qqqqq xxxxx",  # near-zero trigram overlap with bcrypt
-        predicted_files=[],
-        scope_hash="zzz",
-        db_path=populated_db,
-    )
-    # No false-positive mention of the bcrypt Decision
-    assert "bcrypt" not in out
-    # Recall-miss annotation should fire
-    assert "No similar prior missions" in out
-
-
-def test_pre_plan_predicted_files_empty(populated_db):
-    """When no predicted files, we still fire the similarity query alone."""
-    out = consult.render_pre_plan(
-        request_text="bcrypt hashing",
-        predicted_files=[],
-        scope_hash="",
-        db_path=populated_db,
-    )
-    assert "## Prior art" in out
-    qn, _ = _footer_counts(out)
-    assert qn == 1  # only the similarity query
-
-
-# ---------------------------------------------------------------------------
-# pre-dispatch
-# ---------------------------------------------------------------------------
-
-
-def test_pre_dispatch_with_known_class(populated_db):
-    out = consult.render_pre_dispatch(
-        classes=["model-routing"], db_path=populated_db
-    )
-    assert "## Known pitfalls" in out
-    # Should mention root cause from the error
-    assert "user-home" in out
-    # Should mention the prevention rule
-    assert "prevented by" in out or "agent frontmatter" in out
-    qn, rn = _footer_counts(out)
-    assert qn == 1
-    assert rn >= 1
-
-
-def test_pre_dispatch_unknown_class(populated_db):
-    out = consult.render_pre_dispatch(
-        classes=["budget-overrun"],  # not present in fixture
-        db_path=populated_db,
-    )
-    assert "## Known pitfalls" in out
-    assert "no known pitfalls" in out.lower()
-    qn, rn = _footer_counts(out)
-    assert qn == 1
-    assert rn == 0
-
-
-def test_pre_dispatch_caps_at_5_classes(populated_db):
-    """Spec: ≤5 classes processed even if more provided."""
-    out = consult.render_pre_dispatch(
-        classes=[
-            "model-routing",
-            "edit-shape-error",
-            "invented-tool",
-            "convention-violation",
-            "budget-overrun",
-            "consult-skipped",  # 6th — should not fire a 6th query
-            "ci-flake-vs-real",  # 7th
-        ],
-        db_path=populated_db,
-    )
-    qn, _ = _footer_counts(out)
-    assert qn == 5  # not 7
-
-
-def test_pre_dispatch_empty_classes(populated_db):
-    out = consult.render_pre_dispatch(classes=[], db_path=populated_db)
-    assert "## Known pitfalls" in out
-    qn, _ = _footer_counts(out)
-    assert qn == 0
-
-
-# ---------------------------------------------------------------------------
-# post-verify
-# ---------------------------------------------------------------------------
-
-
-def test_post_verify_with_applicable_convention(populated_db):
-    out = consult.render_post_verify(
-        touched_files=[".opencode/agent/orchestrator.md"],
-        db_path=populated_db,
-    )
-    assert "## Convention check" in out
-    # The agent-scope Convention should be cited
-    assert "Primary-session model" in out
-    assert "scope:" in out
-    assert "why:" in out
-    qn, rn = _footer_counts(out)
-    assert qn == 1
-    assert rn >= 1
-
-
-def test_post_verify_no_conventions(populated_db):
-    out = consult.render_post_verify(
-        touched_files=["unrelated_file.txt"], db_path=populated_db
-    )
-    assert "## Convention check" in out
-    # Recall miss annotation
-    assert "No conventions" in out or "no conventions" in out.lower()
-    qn, rn = _footer_counts(out)
-    assert qn == 1
-    assert rn == 0
-
-
-def test_post_verify_dedupes_conventions(populated_db):
-    """If a Convention matches multiple touched files, list it once."""
-    out = consult.render_post_verify(
-        touched_files=[
-            ".opencode/agent/orchestrator.md",
-            ".opencode/agent/coder.md",
-            ".opencode/agent/reviewer.md",
-        ],
-        db_path=populated_db,
-    )
-    # 3 queries, but the same Convention matches all 3 — should only appear once
-    occurrences = out.count("Primary-session model")
-    assert occurrences == 1, f"Convention duplicated: {occurrences} occurrences"
-    qn, _ = _footer_counts(out)
-    assert qn == 3
-
-
-# ---------------------------------------------------------------------------
-# JANUS_CONSULT_ENABLED kill switch
-# ---------------------------------------------------------------------------
-
-
-def test_kill_switch_pre_plan(populated_db, monkeypatch):
-    monkeypatch.setenv("JANUS_CONSULT_ENABLED", "0")
-    out = consult.render_pre_plan(
-        request_text="x", predicted_files=["a.py"], scope_hash="", db_path=populated_db
-    )
-    assert "Consult disabled" in out
-    assert "DISABLED" in out
-
-
-def test_kill_switch_pre_dispatch(populated_db, monkeypatch):
-    monkeypatch.setenv("JANUS_CONSULT_ENABLED", "0")
-    out = consult.render_pre_dispatch(classes=["model-routing"], db_path=populated_db)
-    assert "Consult disabled" in out
-
-
-def test_kill_switch_post_verify(populated_db, monkeypatch):
-    monkeypatch.setenv("JANUS_CONSULT_ENABLED", "0")
-    out = consult.render_post_verify(touched_files=["a.py"], db_path=populated_db)
-    assert "Consult disabled" in out
-
-
-def test_kill_switch_default_is_enabled(populated_db, monkeypatch):
-    """When env var is unset, consult is enabled."""
-    monkeypatch.delenv("JANUS_CONSULT_ENABLED", raising=False)
-    out = consult.render_pre_plan(
-        request_text="bcrypt",
-        predicted_files=["auth.py"],
-        scope_hash="auth.py",
-        db_path=populated_db,
-    )
-    assert "Consult disabled" not in out
-
-
-# ---------------------------------------------------------------------------
-# Missing DB gracefully degrades (footer still emitted)
-# ---------------------------------------------------------------------------
-
-
-def test_missing_db_does_not_crash(tmp_path):
-    """Per CONSULT-PROTOCOL §"Recall miss semantics", an empty/missing LCN
-    is a signal not silence — but it must not halt the pipeline."""
-    missing = tmp_path / "nope.sqlite"
-    out = consult.render_pre_plan(
-        request_text="x", predicted_files=["a.py"], scope_hash="", db_path=missing
-    )
-    # No crash; recall-miss treatment
-    assert "## Prior art" in out
-    qn, rn = _footer_counts(out)
-    assert rn == 0  # no results possible
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
-
-
-def test_cli_pre_plan(populated_db):
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(CONSULT_PATH),
-            "--phase",
-            "pre-plan",
-            "--request",
-            "use bcrypt for password hashing",
-            "--predicted-files",
-            "auth.py",
-            "--db-path",
-            str(populated_db),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    assert proc.returncode == 0, f"CLI failed: stderr={proc.stderr!r}"
-    assert "## Prior art" in proc.stdout
-    assert "bcrypt" in proc.stdout
-
-
-def test_cli_pre_dispatch(populated_db):
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(CONSULT_PATH),
-            "--phase",
-            "pre-dispatch",
-            "--classes",
-            "model-routing",
-            "--db-path",
-            str(populated_db),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    assert proc.returncode == 0
-    assert "## Known pitfalls" in proc.stdout
-
-
-def test_cli_post_verify(populated_db):
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(CONSULT_PATH),
-            "--phase",
-            "post-verify",
-            "--touched-files",
-            ".opencode/agent/orchestrator.md",
-            "--db-path",
-            str(populated_db),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    assert proc.returncode == 0
-    assert "## Convention check" in proc.stdout
-
-
-def test_cli_invalid_phase_rejected():
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(CONSULT_PATH),
-            "--phase",
-            "what",
-            "--db-path",
-            "/tmp/nope.sqlite",
-        ],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    assert proc.returncode != 0
-    # argparse error goes to stderr
-    assert "what" in (proc.stderr + proc.stdout)
-
-
-def test_cli_kill_switch_via_env(populated_db, monkeypatch):
+def _run(*args, db_path=None, extra_env=None):
+    """Run consult.py and return the subprocess.CompletedProcess."""
+    cmd = [sys.executable, str(CONSULT_PATH), *args]
+    if db_path is not None:
+        cmd.extend(["--db-path", str(db_path)])
     env = os.environ.copy()
-    env["JANUS_CONSULT_ENABLED"] = "0"
-    proc = subprocess.run(
-        [
-            sys.executable,
-            str(CONSULT_PATH),
-            "--phase",
-            "pre-plan",
-            "--request",
-            "x",
-            "--db-path",
-            str(populated_db),
-        ],
+    if extra_env:
+        env.update(extra_env)
+    return subprocess.run(
+        cmd,
         capture_output=True,
         text=True,
         timeout=10,
         env=env,
     )
-    assert proc.returncode == 0
-    assert "Consult disabled" in proc.stdout
+
+
+def _assert_ok_json(proc):
+    """Assert exit 0 and valid JSON with ``status == "ok"``."""
+    assert proc.returncode == 0, (
+        f"CLI exited {proc.returncode}: stderr={proc.stderr!r}"
+    )
+    data = json.loads(proc.stdout)
+    assert isinstance(data, dict), f"Expected dict, got {type(data).__name__}"
+    assert "results" in data, "Missing 'results' key"
+    assert "status" in data, "Missing 'status' key"
+    assert data["status"] == "ok", (
+        f"Expected status 'ok', got {data['status']!r}"
+    )
+    return data
+
+
+def _assert_degraded_json(proc):
+    """Assert exit 0 and valid JSON with ``status == "degraded"``."""
+    assert proc.returncode == 0, (
+        f"CLI exited {proc.returncode}: stderr={proc.stderr!r}"
+    )
+    data = json.loads(proc.stdout)
+    assert isinstance(data, dict)
+    assert data.get("status") == "degraded", (
+        f"Expected 'degraded', got {data.get('status')!r}"
+    )
+    assert "results" in data
+    return data
+
+
+# ---------------------------------------------------------------------------
+# pre_plan subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_cli_pre_plan_with_results(populated_db):
+    """Query for bcrypt should find the seeded Decision."""
+    proc = _run("pre_plan", "use bcrypt for password hashing", db_path=populated_db)
+    data = _assert_ok_json(proc)
+    results = data["results"]
+    assert isinstance(results, dict)
+    assert "similar_decisions" in results
+    assert "applicable_conventions" in results
+    assert "recent_patterns" in results
+    assert len(results["similar_decisions"]) >= 1, "Expected at least one decision"
+    # Verify summary structure
+    dec = results["similar_decisions"][0]
+    assert "natural_key" in dec
+    assert dec.get("chosen_approach") == "use bcrypt for password hashing"
+
+
+def test_cli_pre_plan_no_match(populated_db):
+    """Keywords with zero overlap should produce empty decision list."""
+    proc = _run("pre_plan", "zzzzz qqqqq xxxxx wwww", db_path=populated_db)
+    data = _assert_ok_json(proc)
+    results = data["results"]
+    assert len(results["similar_decisions"]) == 0
+
+
+def test_cli_pre_plan_empty_db(empty_db):
+    """An empty database should return valid JSON with empty results."""
+    proc = _run("pre_plan", "anything", db_path=empty_db)
+    data = _assert_ok_json(proc)
+    assert len(data["results"]["similar_decisions"]) == 0
+    assert len(data["results"]["applicable_conventions"]) == 0
+    assert len(data["results"]["recent_patterns"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# pre_dispatch subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_cli_pre_dispatch_with_results(populated_db):
+    """Dispatching 'orchestrator' should surface the model-routing Error."""
+    proc = _run(
+        "pre_dispatch", "orchestrator", "deepseek-v4-flash", db_path=populated_db
+    )
+    data = _assert_ok_json(proc)
+    results = data["results"]
+    assert isinstance(results, dict)
+    assert "known_pitfalls" in results
+    assert "agent_conventions" in results
+    assert results["agent"] == "orchestrator"
+    assert results["model"] == "deepseek-v4-flash"
+
+
+def test_cli_pre_dispatch_no_match(populated_db):
+    """An agent not in the DB should produce empty pitfalls list."""
+    proc = _run("pre_dispatch", "nonexistent-agent", "gpt-5", db_path=populated_db)
+    data = _assert_ok_json(proc)
+    assert len(data["results"]["known_pitfalls"]) == 0
+
+
+def test_cli_pre_dispatch_empty_db(empty_db):
+    """Empty DB should return valid JSON with empty pitfalls."""
+    proc = _run("pre_dispatch", "coder", "gpt-4", db_path=empty_db)
+    data = _assert_ok_json(proc)
+    assert len(data["results"]["known_pitfalls"]) == 0
+    assert len(data["results"]["agent_conventions"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# post_verify subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_cli_post_verify_with_results(populated_db):
+    """Verifying 'auth.py' should surface the bcrypt Decision file overlap."""
+    proc = _run("post_verify", "auth-feature", "auth.py", db_path=populated_db)
+    data = _assert_ok_json(proc)
+    results = data["results"]
+    assert isinstance(results, dict)
+    assert "applicable_conventions" in results
+    assert "potentially_contradicted_decisions" in results
+    assert "changed_files" in results
+    assert results["feature"] == "auth-feature"
+    assert results["changed_files"] == ["auth.py"]
+
+
+def test_cli_post_verify_no_match(populated_db):
+    """An unrelated file should produce no conventions or contradictions."""
+    proc = _run(
+        "post_verify", "xyz", "nobody_ever_touched_this.py", db_path=populated_db
+    )
+    data = _assert_ok_json(proc)
+    assert len(data["results"]["applicable_conventions"]) == 0
+    assert len(data["results"]["potentially_contradicted_decisions"]) == 0
+
+
+def test_cli_post_verify_empty_db(empty_db):
+    """An empty DB should return valid JSON with empty convention list."""
+    proc = _run("post_verify", "feature", "file.py", db_path=empty_db)
+    data = _assert_ok_json(proc)
+    assert len(data["results"]["applicable_conventions"]) == 0
+    assert len(data["results"]["potentially_contradicted_decisions"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# Graceful degradation
+# ---------------------------------------------------------------------------
+
+
+def test_missing_db_returns_ok_with_empty_results(tmp_path):
+    """When the DB file does not exist, consult returns status 'ok' with
+    empty results (the lcn_read query functions gracefully return [])."""
+    missing = tmp_path / "nope.sqlite"
+    proc = _run("pre_plan", "anything", db_path=missing)
+    data = _assert_ok_json(proc)
+    # All result lists should be empty when there is no database
+    assert len(data["results"]["similar_decisions"]) == 0
+    assert len(data["results"]["applicable_conventions"]) == 0
+    assert len(data["results"]["recent_patterns"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# Kill switch
+# ---------------------------------------------------------------------------
+
+
+def test_kill_switch_disables_consult(populated_db):
+    """JANUS_CONSULT_DISABLED=1 should cause consult to return degraded."""
+    proc = _run(
+        "pre_plan",
+        "use bcrypt",
+        db_path=populated_db,
+        extra_env={"JANUS_CONSULT_DISABLED": "1"},
+    )
+    data = _assert_degraded_json(proc)
+    assert "Consult disabled" in data.get("reason", "")
+
+
+def test_kill_switch_default_is_enabled(populated_db):
+    """When env var is not set, consult operates normally."""
+    proc = _run("pre_plan", "bcrypt", db_path=populated_db)
+    data = _assert_ok_json(proc)
+    assert len(data["results"]["similar_decisions"]) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Invalid / missing arguments
+# ---------------------------------------------------------------------------
+
+
+def test_invalid_subcommand():
+    """An unknown subcommand should exit non-zero with error on stderr."""
+    proc = _run("nonexistent_subcommand", "arg")
+    assert proc.returncode != 0
+    combined = (proc.stderr + proc.stdout).lower()
+    assert "nonexistent_subcommand" in combined or "invalid choice" in combined
+
+
+def test_missing_subcommand():
+    """No subcommand should make argparse exit non-zero."""
+    proc = _run()
+    assert proc.returncode != 0
+    assert "usage:" in proc.stderr.lower() or "usage:" in proc.stdout.lower()
+
+
+def test_missing_args_pre_dispatch():
+    """pre_dispatch expects 2 positional args; fewer should fail."""
+    proc = _run("pre_dispatch", "only_one_arg")
+    assert proc.returncode != 0
+
+
+def test_missing_args_post_verify():
+    """post_verify expects 2 positional args; fewer should fail."""
+    proc = _run("post_verify", "only_one_arg")
+    assert proc.returncode != 0

@@ -611,8 +611,8 @@ Python scripts at `C:\Users\lukas\.config\opencode\runtime\`. `PYTHONPATH` auto-
 | `user_model.py` | `python C:\Users\lukas\.config\opencode\runtime\tools\user_model.py summary` | User profile: hardware, preferences |
 | `tool_discovery.py` | `python C:\Users\lukas\.config\opencode\runtime\tools\tool_discovery.py` | List all tools with descriptions and signatures |
 | `consult.py` | `python .opencode/tools/consult.py <mode> <args>` | Query entity store for decisions, errors, patterns, conventions |
-| `lcn_read.py` | `python .opencode/tools/lcn_read.py <query_type> <args>` | Direct entity store reads (used by consult.py) |
-| `lcn_write.py` | `python .opencode/tools/lcn_write.py` (CLI: read JSON from stdin) | Write entities (Decision, Rejection, Error, Pattern, Convention) to LCN store |
+| `lcn_read.py` | (import-only library — no CLI; used by consult.py) | Entity store read operations (query_similar_decisions, query_related_errors, etc.) |
+| `lcn_write.py` | `python .opencode/tools/lcn_write.py` (CLI: pipe JSON to stdin) | Write entities (Decision, Error, Pattern, Convention) to entity store |
 ### State Managers (runtime/state/) — all cwd-based
 
 | Tool | Call | Purpose |

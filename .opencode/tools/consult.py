@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -60,7 +61,7 @@ def _ok(data: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
-def cmd_pre_plan(task_description: str) -> str:
+def cmd_pre_plan(task_description: str, db_path: str | None = None) -> str:
     """Query past decisions + global conventions for planning context."""
     if not _READ_AVAILABLE:
         return _degraded("lcn_read module not available")
@@ -72,14 +73,17 @@ def cmd_pre_plan(task_description: str) -> str:
         workspace_path=workspace,
         context_keywords=task_description,
         limit=5,
+        db_path=db_path,
     )
     conventions = _read_module.query_applicable_conventions(
         scope="*",
         limit=5,
+        db_path=db_path,
     )
     recent_patterns = _read_module.query_recent_by_type(
         entity_type="Pattern",
         limit=3,
+        db_path=db_path,
     )
 
     return _ok(
@@ -99,7 +103,7 @@ def cmd_pre_plan(task_description: str) -> str:
     )
 
 
-def cmd_pre_dispatch(agent_name: str, model_name: str) -> str:
+def cmd_pre_dispatch(agent_name: str, model_name: str, db_path: str | None = None) -> str:
     """Query known errors for this agent + agent-scoped conventions."""
     if not _READ_AVAILABLE:
         return _degraded("lcn_read module not available")
@@ -107,12 +111,14 @@ def cmd_pre_dispatch(agent_name: str, model_name: str) -> str:
     errors = _read_module.query_related_errors(
         agent_or_tool=agent_name,
         limit=5,
+        db_path=db_path,
     )
     # Conventions scoped to the agent directory
     agent_scope = f".opencode/agent/{agent_name}"
     agent_conventions = _read_module.query_applicable_conventions(
         scope=agent_scope,
         limit=5,
+        db_path=db_path,
     )
 
     return _ok(
@@ -127,7 +133,7 @@ def cmd_pre_dispatch(agent_name: str, model_name: str) -> str:
     )
 
 
-def cmd_post_verify(feature_name: str, file_list: str) -> str:
+def cmd_post_verify(feature_name: str, file_list: str, db_path: str | None = None) -> str:
     """Check if changed files contradict any stored decisions or conventions."""
     if not _READ_AVAILABLE:
         return _degraded("lcn_read module not available")
@@ -147,6 +153,7 @@ def cmd_post_verify(feature_name: str, file_list: str) -> str:
             convs = _read_module.query_applicable_conventions(
                 scope=scope,
                 limit=10,
+                db_path=db_path,
             )
             for c in convs:
                 nk = c.get("natural_key", "")
@@ -160,6 +167,7 @@ def cmd_post_verify(feature_name: str, file_list: str) -> str:
         workspace_path=workspace,
         context_keywords=feature_name,
         limit=20,
+        db_path=db_path,
     )
     potentially_contradicted = []
     for dec in all_decisions:
@@ -229,19 +237,31 @@ def _summarize_entity(ent: dict[str, Any]) -> dict[str, Any]:
 
 
 def main() -> None:
+    # Kill switch — set JANUS_CONSULT_DISABLED=1 to bypass LCN injection
+    if os.environ.get("JANUS_CONSULT_DISABLED", "").lower() in ("1", "true", "yes"):
+        print(_degraded("Consult disabled via JANUS_CONSULT_DISABLED"))
+        return
+
     parser = argparse.ArgumentParser(
         description="LCN consultation tool — query entity store for agent decisions",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
+    _DB_PATH_HELP = (
+        "Override LCN database path"
+        " (default: ~/.local/share/opencode/lcn_memory.db)"
+    )
+
     # pre_plan
     p1 = sub.add_parser("pre_plan", help="Query past decisions + conventions for planning")
     p1.add_argument("task_description", help="Natural-language task description")
+    p1.add_argument("--db-path", help=_DB_PATH_HELP)
 
     # pre_dispatch
     p2 = sub.add_parser("pre_dispatch", help="Query known pitfalls for an agent before dispatch")
     p2.add_argument("agent_name", help="Agent name (e.g. 'coder', 'explorer')")
     p2.add_argument("model_name", help="Model name (e.g. 'deepseek-v4-flash')")
+    p2.add_argument("--db-path", help=_DB_PATH_HELP)
 
     # post_verify
     p3 = sub.add_parser("post_verify", help="Check if changed files contradict known decisions")
@@ -250,16 +270,18 @@ def main() -> None:
         "file_list",
         help="Comma-separated list of changed file paths",
     )
+    p3.add_argument("--db-path", help=_DB_PATH_HELP)
 
     args = parser.parse_args()
 
     try:
+        db_path = args.db_path
         if args.command == "pre_plan":
-            output = cmd_pre_plan(args.task_description)
+            output = cmd_pre_plan(args.task_description, db_path=db_path)
         elif args.command == "pre_dispatch":
-            output = cmd_pre_dispatch(args.agent_name, args.model_name)
+            output = cmd_pre_dispatch(args.agent_name, args.model_name, db_path=db_path)
         elif args.command == "post_verify":
-            output = cmd_post_verify(args.feature_name, args.file_list)
+            output = cmd_post_verify(args.feature_name, args.file_list, db_path=db_path)
         else:
             output = _degraded(f"Unknown command: {args.command}")
 
