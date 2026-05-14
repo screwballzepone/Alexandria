@@ -1,4 +1,7 @@
+import json
 import sqlite3
+import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -32,28 +35,73 @@ class AgentMemory:
         conn.commit()
         conn.close()
 
-    def store(self, workspace_path, key, value, tags=""):
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id FROM project_memory WHERE workspace_path=? AND key=?",
-            (workspace_path, key),
+    def _log_error(self, error_type, message):
+        """Log an error to the structured error logger, if available.
+
+        Resolves the error_logger.py path relative to the global opencode
+        config directory. Silently no-ops if the tool is not installed.
+        """
+        error_logger_path = (
+            Path.home()
+            / ".config"
+            / "opencode"
+            / "runtime"
+            / "tools"
+            / "error_logger.py"
         )
-        row = cursor.fetchone()
-        if row:
-            cursor.execute(
-                "UPDATE project_memory SET value=?, tags=?, time_updated=? WHERE id=?",
-                (value, tags, int(time.time()), row[0]),
+        if not error_logger_path.exists():
+            return
+
+        entry = {"error_type": error_type, "context": message}
+        try:
+            subprocess.run(
+                [sys.executable, str(error_logger_path), "log", json.dumps(entry)],
+                capture_output=True,
+                timeout=10,
+                shell=False,
             )
-        else:
+        except Exception:
+            pass  # Never crash on logging failure
+
+    def store(self, workspace_path, key, value, tags=""):
+        """Upsert a key-value entry for the given workspace into project_memory.
+
+        Updates if (workspace_path, key) already exists; inserts otherwise.
+        Tags and a current timestamp are also stored.
+
+        Returns True on success, False on database error.
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO project_memory"
-                " (workspace_path, key, value, tags, time_updated)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (workspace_path, key, value, tags, int(time.time())),
+                "SELECT id FROM project_memory WHERE workspace_path=? AND key=?",
+                (workspace_path, key),
             )
-        conn.commit()
-        conn.close()
+            row = cursor.fetchone()
+            if row:
+                cursor.execute(
+                    "UPDATE project_memory SET value=?, tags=?, time_updated=? WHERE id=?",
+                    (value, tags, int(time.time()), row[0]),
+                )
+            else:
+                cursor.execute(
+                    "INSERT INTO project_memory"
+                    " (workspace_path, key, value, tags, time_updated)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (workspace_path, key, value, tags, int(time.time())),
+                )
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            self._log_error("db_error", f"AgentMemory.store() failed: {e}")
+            try:
+                if conn:
+                    conn.close()
+            except Exception:
+                pass
+            return False
 
     def retrieve(self, workspace_path, key=None):
         conn = sqlite3.connect(str(self.db_path))

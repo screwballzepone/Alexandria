@@ -1,6 +1,6 @@
 ---
 description: "Task decomposition and routing orchestrator"
-model: opencode-go/deepseek-v4-pro
+model: deepseek/deepseek-v4-pro
 fallback_model: opencode-go/qwen3.6-plus
 role: coordination
 phase: any
