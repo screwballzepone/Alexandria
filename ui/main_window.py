@@ -977,6 +977,9 @@ class MainWindow(QMainWindow):
         display_title = title.strip() if ok and title.strip() else "New session"
         self.chat_display.append(f"<hr><i>{display_title} started.</i><hr>")
         self._pending_title = title.strip() if ok and title.strip() else None
+        self.plan_mode_check.setChecked(False)
+        self._attached_file = None
+        self.attach_button.setText("\U0001f4ce")
 
     def fork_session(self):
         item = self.session_list.currentItem()
