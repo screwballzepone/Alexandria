@@ -106,6 +106,32 @@ class OpenCodeService:
         return sessions
 
     @classmethod
+    def get_sessions_export(cls):
+        query = (
+            "SELECT s.id, s.title, s.model, s.agent, s.time_created, "
+            "COUNT(m.id) as message_count "
+            "FROM session s "
+            "LEFT JOIN message m ON m.session_id = s.id "
+            "WHERE s.time_archived IS NULL "
+            "GROUP BY s.id "
+            "ORDER BY s.time_updated DESC LIMIT 50"
+        )
+        output = cls.run_cmd(f'opencode.cmd db "{query}" --format json', as_json=True)
+        if not output:
+            return []
+        sessions = []
+        for row in output:
+            sessions.append({
+                "id": row.get("id"),
+                "title": row.get("title", "Untitled"),
+                "model": row.get("model", ""),
+                "agent": row.get("agent", ""),
+                "created_at": row.get("time_created"),
+                "message_count": row.get("message_count", 0),
+            })
+        return sessions
+
+    @classmethod
     def get_session_messages(cls, session_id, limit=50):
         # Sanitize session_id: only allow hex chars and hyphens (UUID format)
         sanitized = ''.join(c for c in session_id if c in '0123456789abcdefABCDEF-')
