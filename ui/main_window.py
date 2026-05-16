@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QFileSystemModel,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
@@ -159,6 +160,14 @@ class MainWindow(QMainWindow):
         self.sidebar_tabs.addTab(self.tree, "Files")
 
         # Sessions Tab - wrapped in widget with Fork button below list
+        self.session_search = QLineEdit()
+        self.session_search.setPlaceholderText("Search sessions...")
+        self.session_search.textChanged.connect(self._on_session_search)
+        self._session_search_timer = QTimer()
+        self._session_search_timer.setSingleShot(True)
+        self._session_search_timer.timeout.connect(self._apply_session_filter)
+        self._all_sessions = []
+
         self.session_list = QListWidget()
         self.refresh_sessions()
         self.session_list.itemClicked.connect(self.load_session)
@@ -166,6 +175,7 @@ class MainWindow(QMainWindow):
         session_widget = QWidget()
         session_layout = QVBoxLayout(session_widget)
         session_layout.setContentsMargins(0, 0, 0, 0)
+        session_layout.addWidget(self.session_search)
         session_layout.addWidget(self.session_list)
         self.fork_btn = QPushButton("Fork Session")
         self.fork_btn.setToolTip("Branch the selected session into a new one")
@@ -294,13 +304,25 @@ class MainWindow(QMainWindow):
         self._sessions_worker.start()
 
     def _on_sessions_loaded(self, sessions):
+
+
+        self._all_sessions = sessions
+        self._apply_session_filter()
+
+    def _on_session_search(self):
+        self._session_search_timer.start(300)
+
+    def _apply_session_filter(self):
+        query = self.session_search.text().strip().lower()
         from datetime import datetime
 
         from utils.helpers import format_timestamp
 
         self.session_list.clear()
-        for session in sessions:
+        for session in self._all_sessions:
             title = session.get("title", "Untitled")
+            if query and query not in title.lower():
+                continue
             updated_at = session.get("updated_at")
             dt = datetime.fromtimestamp(updated_at / 1000) if updated_at else None
             display_title = f"{title}  -  {format_timestamp(dt)}" if dt is not None else title
