@@ -115,7 +115,7 @@ class AgentMemory:
             result = row[0] if row else None
         else:
             cursor.execute(
-                "SELECT key, value FROM project_memory WHERE workspace_path=?",
+                "SELECT key, value, time_updated FROM project_memory WHERE workspace_path=? ORDER BY time_updated DESC",
                 (workspace_path,),
             )
             result = cursor.fetchall()
