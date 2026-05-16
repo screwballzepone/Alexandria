@@ -24,7 +24,6 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 import numpy as np
-import pytest
 
 # -- Path bootstrap ----------------------------------------------------------
 # lcn_brain editable install is broken; lcn_jvp is not installed at all.
@@ -34,7 +33,7 @@ if str(_BRAIN_DIR) not in sys.path:
     sys.path.insert(0, str(_BRAIN_DIR))
 
 from lcn_jvp.dual import sample_direction, antithetic
-from lcn_jvp.estimators import jvp_activity, Result
+from lcn_jvp.estimators import jvp_activity
 from lcn_brain.lcn.constants import SIGMA_THRESHOLD
 from lcn_brain.lcn.readout import readout_forward, readout_pullback
 

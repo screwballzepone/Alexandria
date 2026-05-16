@@ -17,14 +17,12 @@ Invariants verified:
 import jax
 import jax.numpy as jnp
 import pytest
-from jax.scipy.stats import norm
 
 from lcn_brain.lcn import encoder
 from lcn_brain.lcn.constants import (
     N_ENC,
     SIGMA_THRESHOLD,
     VTHETA_INIT,
-    LEAK_TAU,
     REFRACTORY_STEPS,
 )
 

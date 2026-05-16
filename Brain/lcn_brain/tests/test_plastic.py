@@ -15,8 +15,6 @@ import pytest
 from lcn_brain.lcn import plastic
 from lcn_brain.lcn.constants import (
     ETA_PLASTIC,
-    RHO_GATE_GAIN,
-    RHO_THRESHOLD0,
     MU_MIN,
     MU_FREE,
     P,

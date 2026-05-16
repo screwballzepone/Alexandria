@@ -12,7 +12,6 @@ import jax
 import jax.numpy as jnp
 import jax.nn as jnn
 import pytest
-from flax import linen as nn
 
 from lcn_brain.lcn import readout
 from lcn_brain.lcn.constants import D, M, P, BETA_0, U_MAX, A_MIN, DELTA_MIN
