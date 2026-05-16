@@ -14,7 +14,6 @@ Acceptance probe:
 import jax
 import jax.numpy as jnp
 import pytest
-from dataclasses import dataclass
 
 # Import from testbed module
 from lcn_brain.lcn.testbed import burgers

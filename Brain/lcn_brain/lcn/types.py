@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import jax.numpy as jnp
 
-from .constants import D, M, P, N_ENC
 
 
 @dataclass

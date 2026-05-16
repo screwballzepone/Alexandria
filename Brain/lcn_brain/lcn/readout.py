@@ -17,12 +17,11 @@ Invariants:
   I-RO-3: ||z|| <= ||W_z||_F * sqrt(D+M)
 """
 
-import jax
 import jax.numpy as jnp
 import jax.nn as jnn
 from flax import linen as nn
 
-from .constants import D, M, P, BETA_0, U_MAX, A_MIN, DELTA_MIN
+from .constants import P, BETA_0, U_MAX, A_MIN, DELTA_MIN
 
 
 def _calibrated_beta() -> float:

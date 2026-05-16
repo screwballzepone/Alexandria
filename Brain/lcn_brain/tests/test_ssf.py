@@ -14,10 +14,9 @@ Invariants verified:
 import jax
 import jax.numpy as jnp
 import pytest
-from flax import linen as nn
 
 from lcn_brain.lcn import ssf
-from lcn_brain.lcn.constants import D, N_ENC, A_MIN, B_PARAM
+from lcn_brain.lcn.constants import D, N_ENC, A_MIN
 
 
 class TestSSFAcceptance:

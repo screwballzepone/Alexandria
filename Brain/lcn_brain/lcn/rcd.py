@@ -22,7 +22,7 @@ import jax.numpy as jnp
 import jax.nn as jnn
 from flax import linen as nn
 
-from .constants import M, D
+from .constants import M
 
 
 class RCDCell(nn.Module):

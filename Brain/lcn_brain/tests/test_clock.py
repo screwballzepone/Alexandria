@@ -18,9 +18,7 @@ import pytest
 
 from lcn_brain.lcn import clock
 from lcn_brain.lcn.constants import (
-    RHO_EMA_BETA,
     RHO_THRESHOLD0,
-    RHO_GATE_GAIN,
     DELTA_MIN,
     N_ENC,
 )
