@@ -1377,5 +1377,9 @@ class MainWindow(QMainWindow):
 
         self.worker.stop()
         self.worker.wait()
+        for attr in dir(self):
+            obj = getattr(self, attr, None)
+            if isinstance(obj, QTimer) and obj.isActive():
+                obj.stop()
         super().closeEvent(event)
 
