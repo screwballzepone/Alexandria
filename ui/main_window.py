@@ -274,13 +274,20 @@ class MainWindow(QMainWindow):
 
     def refresh_memory(self):
         self.memory_list.clear()
+        from datetime import datetime
+
         from core.memory import AgentMemory
+        from utils.helpers import format_timestamp
 
         mem = AgentMemory()
         memories = mem.retrieve(os.getcwd())
-        for key, value in memories:
+        for row in memories:
+            key, value = row[0], row[1]
             item = QListWidgetItem(f"{key}: {value}")
             item.setData(Qt.UserRole, key)
+            if len(row) > 2 and row[2]:
+                ts = datetime.fromtimestamp(row[2])
+                item.setToolTip(f"Updated {format_timestamp(ts)}")
             self.memory_list.addItem(item)
 
     def refresh_sessions(self):
@@ -606,14 +613,18 @@ class MainWindow(QMainWindow):
 
     @Slot(str)
     def handle_text(self, text):
+        from datetime import datetime
+
         import markdown
 
         self.chat_display.moveCursor(QTextCursor.End)
         html = markdown.markdown(text, extensions=["fenced_code", "codehilite"])
+        ts = datetime.now().strftime("%H:%M")
         formatted = (
-            '<div style="margin-top:10px;margin-bottom:10px;background:#252526;'
-            'padding:10px;border-radius:5px;">'
-            '<span style="color:#569CD6;font-weight:bold;">OpenCode:</span><br>'
+            f'<div style="margin-top:10px;margin-bottom:10px;background:#252526;'
+            f'padding:10px;border-radius:5px;">'
+            f'<span style="color:#888;font-size:11px;">[{ts}]</span> '
+            f'<span style="color:#569CD6;font-weight:bold;">OpenCode:</span><br>'
             f"{html}</div>"
         )
         self.chat_display.append(formatted)
