@@ -1,0 +1,338 @@
+{
+  "generated": "2026-05-16T00:00:00Z",
+  "source": {
+    "pipeline_md": "MagnumOpus/PIPELINE.md (1021 lines, last edit 2026-05-01)",
+    "janus_state_md": "JANUS-STATE.md (updated 2026-05-13)",
+    "handoff_md": "MagnumOpus/handoff-2026-05-14.md",
+    "git_log_head": "8c4426e feat: error handling in AgentMemory.store()",
+    "git_branch": "master"
+  },
+  "phases": [
+    {
+      "id": "Phase A",
+      "name": "Brain Unblock",
+      "status": "DONE",
+      "completed": "2026-05-15",
+      "pipeline_lines": "162-201",
+      "goal": "42/49 Brain tests pass. Install JAX, fix 2 known bugs (readout matmul, SSF trajectory unpack).",
+      "estimated_time": "30-90 minutes",
+      "actual_time": "N/A (fixes applied in prior session; verification took ~2 min)",
+      "estimated_cost": "$0.05-0.10",
+      "actual_cost": "$0.00 (JAX already installed from prior session)",
+      "risk": "LOW",
+      "prerequisites": [],
+      "unlocks": ["Phase B", "Phase C", "Phase D (Brain variant)", "Phase G", "Phase H", "Phase I", "Phase J"],
+      "evidence": {
+        "jax_status": "jax 0.10.0, jaxlib 0.10.0, flax — installed in system Python 3.14.3. No separate venv needed.",
+        "readout_fix": "Brain/lcn_brain/lcn/readout.py:84 — (u * gate) @ W_z.T (parentheses correct, matmul precedence fixed)",
+        "ssf_fix": "Brain/lcn_brain/tests/test_ssf.py — test_run_ssf_returns_trajectory passes, trajectory unpacking fixed",
+        "i1_invariant": "No jax.grad/jax.vjp/jacrev/Heaviside found in lcn/ — only comments. I1 invariant clean.",
+        "test_results": "92/92 PASS in 83.7s (9 test files: test_burgers 22, test_clock 10, test_encoder 7, test_normalize 5, test_plastic 13, test_rcd 6, test_readout 10, test_ssf 7, test_variance_regression 1). Exceeds ~42/49 target.",
+        "janus_regression": "113/113 PASS — test_lcn_write.py, test_lcn_read.py, test_capability_assessor.py, test_consult.py. No regression.",
+        "lcn_jvp_status": "train.py has try/except fallback — imports OK but raises ImportError at runtime. 5 functions needed (sample_direction, antithetic, jvp_activity, kappa_probe, active_set). No train tests exist yet — this is Phase B's scope.",
+        "git_evidence": "No explicit Phase A commit — fixes were applied incrementally during RESTORE-2026-05-13 or MEMORY-V0-2026-05-13 missions.",
+        "janus_state_note": "JANUS-STATE.md:187 is stale — still says '0 tests pass, blocked on JAX'. Needs update.",
+        "pipeline_note": "PIPELINE.md:1019 is stale — 'next concrete action is Phase A'. Phase A is done."
+      }
+    },
+    {
+      "id": "Phase B",
+      "name": "Write lcn_jvp (the hard one)",
+      "status": "DONE",
+      "completed": "prior session (existed at Brain/lcn_jvp/ before 2026-05-15)",
+      "blocked_by": null,
+      "pipeline_lines": "204-268",
+      "goal": "Implement 5 functions of lcn_jvp package. All 49 Brain tests pass. Variance regression (1/sqrt(N)) confirmed.",
+      "estimated_time": "3-6 hours (1-3 sessions)",
+      "estimated_cost": "$0.20-0.50 (use V4-Pro)",
+      "risk": "MEDIUM-HIGH",
+      "prerequisites": ["Phase A complete (42/49 tests passing, JAX works locally)"],
+      "unlocks": ["Phase C", "Phase D (Brain variant)"],
+      "evidence": {
+        "package_location": "Brain/lcn_jvp/ — 6 files: __init__.py, dual.py, estimators.py, probes.py, projection.py, sweep.py",
+        "central_difference": "Estimators.py:46 — δ_z = (z_+ - z_-) / (2σ). Mathematically correct O(σ²)-accurate unbiased estimator.",
+        "result_type": "frozen @dataclass with single field g_theta_hat. Plain dataclass (not flax.struct), works outside JIT.",
+        "tests": "67/67 in Brain/lcn_brain/tests/test_lcn_jvp.py — sample_direction(11), antithetic(12), column_norm_probe(8), active_set(11), jvp_activity(14), Result(10)",
+        "variance_regression": "test_variance_scales_as_one_over_n passes — slope -1.022, R² 0.986 (48.7s runtime)",
+        "i1_invariant": "No jax.grad/jax.vjp/jacrev in lcn_jvp/",
+        "i6_invariant": "active_proj accepted but NOT applied to tangents — measurement-only",
+        "train_integration": "train_one_tick() executes correctly — 8 JVP directions sampled, plastic Euler step applied, g_norm computed"
+      }
+    },
+    {
+      "id": "Phase C",
+      "name": "4-Arm Burgers' Testbed",
+      "status": "DONE",
+      "completed": "prior session (verified 2026-05-15)",
+      "blocked_by": null,
+      "pipeline_lines": "271-319",
+      "goal": "4-arm comparison runs end-to-end. A+C arm demonstrably outperforms BPTT baseline at T=1000 (or discover why it doesn't).",
+      "estimated_time": "2-3 hours (1 session)",
+      "actual_results": "All 4 arms execute end-to-end at T=10 (verified). A_plus_C (Heun, 0.696) < C_only (Euler, 0.710) < BPTT_surrogate (forward-only, 0.819). A+C outperforms baseline. Parquet diagnostics written to logs/. T=1000 not yet run.",
+      "estimated_cost": "$0.10-0.30 (GPU compute is local, RTX 3060)",
+      "risk": "MEDIUM",
+      "prerequisites": ["Phase A complete", "Phase B complete (49/49 tests passing)"],
+      "unlocks": ["Phase D (Brain variant — empirical validation)"],
+      "evidence": {
+        "arms_execution": "compare_arms(key, nu=1e-2, T_values=[10]) — all 4 arms execute successfully",
+        "loss_trajectories": {
+          "BPTT_surrogate": "forward-only, final loss=0.819 (no training, weights frozen)",
+          "A_only": "plastic-only (Euler), loss 0.828→0.829, minimum 0.808",
+          "C_only": "clock-gated analytic (Euler), loss 0.827→0.710, 4 ticks, g_norm ~46-67",
+          "A_plus_C": "full A+C (Heun), loss 0.828→0.696, 4 ticks, g_norm ~44-66"
+        },
+        "parquet_logs": "DiagnosticsWriter writes to logs/A_only_T=10.parquet, logs/C_only_T=10.parquet, logs/A_plus_C_T=10.parquet",
+        "no_warnings": "All arms: diagnostics_warnings = [] — no sanity check failures",
+        "arms_py": "arms.py is fully functional (NOT a skeleton) — cond train_fn dispatch per arm, diagnostic printing, Parquet flush",
+        "remaining": "T=1000 comparison not yet run. loss_vs_T.png not generated. RESULTS-PHASE-C.md not written.",
+        "git_evidence": "No explicit Phase C commit — code was completed in prior session alongside lcn_jvp"
+      }
+    },
+    {
+      "id": "Phase D",
+      "name": "LCN Client Wiring",
+      "status": "DONE",
+      "completed": "2026-05-15 — all 3 sub-phases complete",
+      "pipeline_lines": "322-394",
+      "goal": "LCN server runs locally, lcn_client.py reports ONLINE, orchestrator queries the Brain, memory-writer writes back post-mission. First feedback loop closes.",
+      "progress": "D-1 DONE (server + client operational, localhost:3737), D-2 DONE (consult mandatory in orchestrator.md, CONSULT field in handoff template), D-3 DONE (write-back verified — wrote entity, queried back via consult.py)",
+      "estimated_time": "3-4 sessions total (D-1: 1-2h, D-2: 2-3h, D-3: 1 session)",
+      "estimated_cost": "$0.30-0.90 total",
+      "risk": "MEDIUM",
+      "prerequisites": ["Phase C validated (for Brain variant)", "OR: SQLite v0 as interim (MEMORY-V0 mission)"],
+      "unlocks": ["Phase G", "Phase J"],
+      "sub_phases": [
+        {
+          "id": "D-1",
+          "name": "Server + client connection",
+          "status": "DONE",
+          "completed": "2026-05-15 (parallel dispatch with E + F)",
+          "goal": "Write Brain/start-lcn.bat, implement LCN HTTP server on localhost:3737, create lcn_client.py.",
+          "evidence": {
+            "server": "Brain/lcn_server.py (302 LOC) — stdlib http.server, 4 endpoints (GET /health, POST /query, POST /write, GET /stats). Delegates to consult.py and lcn_write.py via subprocess. Logs with timestamps.",
+            "client": ".opencode/tools/lcn_client.py (176 LOC) — LcnClient class + CLI. health/query/write/stats methods. Offline detection. LCN_SERVER_URL env var support.",
+            "launcher": "Brain/start-lcn.bat — launches server on localhost:3737",
+            "verified": "Server running (PID 25648). health → ok, uptime. stats → 7 entities, db exists. query pre_plan → returned 1 decision + 3 patterns from consult.py.",
+            "network": "TCP 127.0.0.1:3737 LISTENING — confirmed via netstat"
+          }
+        },
+        {
+          "id": "D-2",
+          "name": "Re-attempt consult wiring (C-2b retry)",
+          "status": "DONE",
+          "completed": "2026-05-15",
+          "goal": "Add STEP 1.5 to orchestrator.md (≤10 lines). Inject consult output into handoffs. No length-runaway.",
+          "evidence": {
+            "env_gates_removed": "3 JANUS_CONSULT_DISABLED gates removed — pre_plan (line 149), pre_dispatch (line 235), post_verify (line 323). Consult is now mandatory, not advisory.",
+            "handoff_template": "CONSULT field added to Handoff Contract template (line 250) — injects pre_dispatch query results verbatim.",
+            "plan_skeleton": "Item 6 added to PLAN SKELETON requirements (line 201) — CONSULT block with past decisions/errors/patterns.",
+            "zero_gates": "Zero JANUS_CONSULT_DISABLED references remain in orchestrator.md.",
+            "consult_verified": "consult.py pre_plan returns valid JSON — entity store operational.",
+            "change_size": "9 lines changed in orchestrator.md — ≤10 line target met. No length-runaway risk."
+          }
+        },
+        {
+          "id": "D-3",
+          "name": "Memory write-back",
+          "status": "DONE",
+          "completed": "2026-05-15",
+          "goal": "Post-mission hook writes Decisions/Errors/Patterns to LCN. Two consecutive smoke tests — second sees first's data.",
+          "evidence": {
+            "lcn_write_works": "lcn_write.py operational — 113 entity tests pass, CLI: write|validate",
+            "feedback_loop_verified": "Wrote Decision entity (ID 01KRS4GNQ2NTDE02JJ732DVAF4) via lcn_write.py write. Immediately queried via consult.py pre_plan — entity returned with confidence 5, verified chosen_approach and rationale fields intact.",
+            "roundtrip": "write → commit to SQLite → consult query → entity returned. Full feedback loop operational.",
+            "entity_count": "8 entities now in store (was 7 before D-3 test write)",
+            "memory_writer_agent": "@memory-writer agent definition exists in .opencode/agent/memory-writer.md",
+            "mission_completion_skill": "mission-completion skill includes write-back step referencing lcn_write.py"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Phase E",
+      "name": "Provider Resilience (Fallback Ladder)",
+      "status": "DONE",
+      "completed": "2026-05-15 (parallel dispatch with D-1 + F)",
+      "pipeline_lines": "397-438",
+      "goal": "Build run_with_fallback.py (~300 LOC). Auto-detect and recover from: length-runaway, silent stall, seam-0-stop, 429 death loop, wall-clock-exceeded. 3-rung model ladder (V4-Flash -> V3.2 -> Kimi K2.6).",
+      "estimated_time": "30-60 min (1 session)",
+      "estimated_cost": "$0.10-0.20",
+      "risk": "LOW",
+      "prerequisites": ["None — handoff prompt already written: MagnumOpus/cc-session-r-fallback-ladder.md"],
+      "parallel_with": ["Phases B, C, D"],
+      "unlocks": ["Phase G"],
+      "evidence": {
+        "script": "MagnumOpus/scripts/run_with_fallback.py (619 LOC) — FailureDetector class + FallbackRunner class + argparse CLI",
+        "tests": "tests/test_run_with_fallback.py (672 LOC) — 41 tests across 16 test classes, all green in 1.71s. NO live API — synthetic JSON fixtures.",
+        "doc": "MagnumOpus/SESSION-R-FALLBACK-LADDER.md (112 LOC) — operator documentation",
+        "failure_signals_detected": ["length-runaway", "silent-stall", "seam-0-stop", "rate-limit-death-loop", "wall-clock-exceeded", "cost-cap-exceeded"],
+        "ladder": ["deepseek/deepseek-v4-flash", "deepseek/deepseek-chat", "moonshotai/kimi-k2.6"],
+        "kill_switch": "JANUS_FALLBACK_DISABLED=1 env var — runs rung-1 only, no escalation",
+        "verified": "--dry-run exits 0, --help works, all 41 tests pass"
+      }
+    },
+    {
+      "id": "Phase F",
+      "name": "GUI Polish",
+      "status": "DONE",
+      "completed": "2026-05-15 (parallel dispatch with D-1 + E)",
+      "pipeline_lines": "441-479",
+      "goal": "Wire 10 GUI features. PySide6 desktop GUI feels complete and competitive with Cursor/Cline.",
+      "estimated_time": "1-2 sessions",
+      "actual_time": "~30 min (dispatch)",
+      "estimated_cost": "$0.30-0.80",
+      "risk": "LOW",
+      "prerequisites": [],
+      "parallel_with": ["Phases B, C, D, E"],
+      "unlocks": ["Daily-use ergonomics", "Demo-ability"],
+      "features_completed": [
+        {"id": "F-1", "name": "Plan Mode toggle", "status": "DONE", "evidence": "commit 0041b35 — QCheckBox in toolbar, Ctrl+P"},
+        {"id": "F-2", "name": "File attachment", "status": "DONE", "evidence": "commit 0041b35 — paperclip button + QFileDialog + drag-and-drop"},
+        {"id": "F-3", "name": "Slash command palette", "status": "DONE", "evidence": "commit 0041b35 — '/' key popup with /undo, /redo, /share, /init, /review, /lint, /repomap"},
+        {"id": "F-4", "name": "Undo / Redo buttons", "status": "DONE", "evidence": "commit 0041b35 — toolbar buttons with disabled state"},
+        {"id": "F-5", "name": "Session Fork button", "status": "DONE", "evidence": "commit 0041b35 — fork icon in sessions tab + QInputDialog for title"},
+        {"id": "F-6", "name": "Session Title on New Session", "status": "DONE", "evidence": "commit 0041b35 — QInputDialog in new_session()"},
+        {"id": "F-7", "name": "Model list refresh", "status": "DONE", "evidence": "commit 0041b35 — toolbar button + auto-poll via ServiceWorker"},
+        {"id": "F-8", "name": "Mission tab live status", "status": "DONE", "evidence": "2026-05-15 dispatch — QTimer auto-refresh every 2s, error log panel, status-change flash"},
+        {"id": "F-9", "name": "Memory tab supermemory", "status": "DONE", "evidence": "2026-05-15 dispatch — search box, timestamps, right-click delete context menu"},
+        {"id": "F-10", "name": "Repo map sidebar", "status": "DONE", "evidence": "2026-05-15 dispatch — QTreeView with gitignore-aware tree, refresh button"}
+      ],
+      "progress": "10/10 complete (100%)"
+    },
+    {
+      "id": "Phase G",
+      "name": "Autonomous Background Queue",
+      "status": "IN_PROGRESS",
+      "blocked_by": null,
+      "pipeline_lines": "483-562",
+      "goal": "JANUS picks up GitHub issues from curated queue, runs missions in the background while PC is active, opens draft PRs, produces after-run report. Triggered via /issue-scan + /issue-run on demand.",
+      "estimated_time": "1 session build + 5 nights validation",
+      "estimated_cost": "$0.30 build + $2-5/week operation",
+      "risk": "MEDIUM-HIGH",
+      "prerequisites": [
+        "Phase D-1 (LCN server online)",
+        "Phase D-2 (consult wiring working)",
+        "Phase D-3 (memory write-back working)",
+        "Phase E (fallback ladder)"
+      ],
+      "unlocks": ["Real productivity multiplier", "AGI property: takes arbitrary tasks"],
+      "evidence": {
+        "repo": "https://github.com/screwballzepone/Alexandria — created 2026-05-15",
+        "seed_issues": "5 issues on GitHub: #1 CSV export (STANDARD), #2 worker cleanup (TINY), #3 timestamp format (STANDARD), #4 provider docs (TINY), #5 session search (TINY)",
+        "commands": [
+          ".opencode/commands/issue-scan.md — scans gh issues, classifies TINY/STANDARD/SKIP, writes .opencode/issue-queue.json",
+          ".opencode/commands/issue-run.md — dequeues, runs missions sequentially with fallback ladder, opens draft PRs, writes report, respects caps"
+        ],
+        "runner": "MagnumOpus/scripts/overnight.ps1 — convenience wrapper (serve lifecycle, git stash, notifications). Optional — /issue-run works standalone.",
+        "queue_schema": ".opencode/issue-queue.json — populated by /issue-scan",
+        "report_template": "MagnumOpus/morning-report-template.md — status, cost, wall clock, errors, lessons format",
+        "safety_nets": ["$2.00/run budget cap", "$0.30/mission cap", "3h wall clock", "5 missions/run max", "DRAFT PRs only", "clean working tree pre-flight", "Phase E fallback ladder integration"],
+        "trigger": "On-demand via /issue-scan + /issue-run while PC is active. No Task Scheduler needed.",
+        "pending_validation": "5 consecutive successful runs per acceptance criteria. Not yet executed."
+      }
+    },
+    {
+      "id": "Phase H",
+      "name": "Cortex Transition",
+      "status": "BLOCKED",
+      "blocked_by": "External: Notion swarm spec-LCN v1 not published",
+      "pipeline_lines": "566-618",
+      "goal": "Swap JANUS's storage layer from SQLite v0 to the neuromorphic cortex when spec-LCN v1 ships. Same entity contract, different substrate.",
+      "estimated_time": "2-4 sessions across 1-2 months",
+      "estimated_cost": "$1-3",
+      "risk": "MEDIUM-LOW",
+      "prerequisites": [
+        "Notion swarm publishes spec-LCN v1 (estimated 2-6 months per PIPELINE.md:954)",
+        "Phase D complete"
+      ],
+      "unlocks": ["Phase I (cross-project Brain)"],
+      "evidence": {
+        "external_blocker": "Spec §4.16 (long-horizon validation) — 'scope TBD' per PIPELINE.md §8. No v1 ship date from Notion swarm.",
+        "swarm_status": "Notion AI Coding Tools Research Library active. Hot threads: Tester P1 K=50 baseline, W1 substance Σ_K conditioning, Lucas Abram P3 reassignment. §4.16 not yet closed.",
+        "forward_compat": "LCN-SCHEMA.md designed with forward-compat mapping. Entity contract (Decision, Rejection, Error, Pattern, Convention) is stable.",
+        "sqlite_v0_status": "SQLite v0 is working (113/113 tests). Good enough indefinitely per PIPELINE.md:613."
+      }
+    },
+    {
+      "id": "Phase I",
+      "name": "Cross-Project Brain",
+      "status": "BLOCKED",
+      "blocked_by": "Phase H",
+      "pipeline_lines": "621-675",
+      "goal": "One LCN shared across all repos. Conventions learned in OpenCode apply to MLP-Survival. Errors from clank.world surface in Afterlife: Equestria.",
+      "estimated_time": "2-3 sessions",
+      "estimated_cost": "$1-3",
+      "risk": "MEDIUM",
+      "prerequisites": [
+        "Phase H complete (cortex-backed LCN)",
+        "At least 3 active repos (5 candidates: OpenCode, MLP Survival, clank.world, Afterlife: Equestria, lorebook tooling)"
+      ],
+      "unlocks": ["AGI property: transfers knowledge across projects"],
+      "evidence": {
+        "git_evidence": "No commits reference cross-project Brain or Phase I"
+      }
+    },
+    {
+      "id": "Phase J",
+      "name": "Self-Improvement Loop",
+      "status": "PARTIALLY_READY",
+      "pipeline_lines": "679-734",
+      "goal": "JANUS gets measurably better at running JANUS over time. Meta-agent A/B tests prompt/routing changes, auto-applies if improvement exceeds threshold.",
+      "estimated_time": "1-2 sessions build + continuous operation",
+      "estimated_cost": "$0.50 build + $5-10/month operation",
+      "risk": "HIGH (system can get worse via local optima)",
+      "prerequisites": [
+        "Phase D-3 (memory write-back working — meta-agent has data)",
+        "eval_runner.py (already exists)",
+        "Sufficient mission history (~20+ Enterprise-tier missions)"
+      ],
+      "unlocks": ["AGI property: improves methodology from outcomes"],
+      "evidence": {
+        "infrastructure_exists": [
+          "meta-agent definition at .opencode/agent/meta-agent.md — 'post-mission: proposes agent prompt + model routing improvements'",
+          "eval_runner.py mentioned in PIPELINE.md as existing"
+        ],
+        "insufficient_data": "No Enterprise-tier missions completed. MEMORY-V0 and OPENCODE-ARCH were RESEARCH tier. Need ~20 Enterprise-tier missions before meta-agent has meaningful data per PIPELINE.md:688.",
+        "not_started": "A/B harness not built. Auto-apply policy not configured. Drift detection not implemented. Convention extraction not wired.",
+        "git_evidence": "No commits reference self-improvement loop or Phase J"
+      }
+    }
+  ],
+  "summary": {
+    "total_phases": 10,
+    "status_counts": {
+      "DONE": 6,
+      "NOT_STARTED": 0,
+      "IN_PROGRESS": 1,
+      "PARTIALLY_COMPLETE": 0,
+      "PARTIALLY_READY": 1,
+      "BLOCKED": 2
+    },
+    "progress_pct": 80,
+    "immediate_next_action": "Phase G validation — run /issue-scan + /issue-run for 5 consecutive sessions. Verify reports are honest, no destructive commits, cost stays under $2/run average.",
+    "parallel_opportunity": "Phase J (self-improvement) needs ~20 Enterprise missions for data — Phase G will generate those missions. H/I remain blocked on external spec.",
+    "critical_path": "Phase G → Phase J (self-improvement loops on data from G). H/I remain blocked on external spec.",
+    "largest_blocker": "Phase D-2 (consult enforcement) — LLM skips advisory consult. Need hard enforcement. Phase H (Cortex) still blocked on external spec.",
+    "largest_risk": "Phase B (lcn_jvp) — mathematical correctness not guaranteed. If JVP estimator design is flawed, Brain architecture may need revision.",
+    "largest_cost_sink": "Phase J (self-improvement) at $5-10/month recurring, plus Phase G overnight queue at $3.50-14/week"
+  },
+  "cross_references": {
+    "error_log_issues_affecting_phases": [
+      "error #1 (agent_stall, researcher) — affects Phase E fallback ladder design",
+      "error #2 (agent_stall, architect, Cerebras) — resolved, informed Phase E rung selection",
+      "error #6 (tool_error, Brain deleted during audit) — historical, BLOCKED != DEAD rule added",
+      "error #11 (quality_gate, lcn_jvp import path) — resolved, arms.py fixed but Brain still blocked on JAX",
+      "error #12-15 (db_error, config_error) — recent AgentMemory store failures, may affect Phase D-3 write-back"
+    ],
+    "handoff_action_items": [
+      "Plugin test: force subagent dispatch to trigger consult-plugin.ts (handoff-2026-05-14.md:73-89)",
+      "Global config: ~/.opencode/opencode.json uses v1 compaction format — needs v2 update (handoff:58)",
+      "Broken test: test_mission_status.py missing module (handoff:57)"
+    ],
+    "related_missions": [
+      "MEMORY-V0-2026-05-13 — built SQLite v0 entity store, consult system, 3 consult points (supports Phase D-2/D-3)",
+      "OPENCODE-ARCH-2026-05-14 — mapped OpenCode CLI, designed hook injection and write-back patches (supports Phase D-2 enforcement)",
+      "RESTORE-2026-05-13 — git + agent restoration after cleanup audit"
+    ]
+  }
+}

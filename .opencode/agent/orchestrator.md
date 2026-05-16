@@ -148,9 +148,9 @@ Before classifying any task, I run a 30-second validation sweep to catch the #1 
 
 6. **Consult pre-plan** — for STANDARD+ tasks, query the entity store for relevant past decisions and patterns:
    ```powershell
-   if (-not $env:JANUS_CONSULT_DISABLED) { python .opencode/tools/consult.py pre_plan "<task summary>" 2>$null }
+   python .opencode/tools/consult.py pre_plan "<task summary>" 2>$null
    ```
-   If the output contains results with status "ok", inject the `decisions` and `patterns` arrays into the plan skeleton as a CONSULT block. If degraded, skip silently.
+   Inject output into the plan skeleton as a `CONSULT` block. If the tool is missing or output is empty, skip silently.
 
 **Pre-flight passes** → proceed to classification. **Pre-flight fails** → report specific blocker, stop, wait for user to resolve.
 
@@ -199,6 +199,7 @@ Every plan must cover:
 3. **Signatures** — key new function types
 4. **Boundaries** — what goes in which file, why
 5. **Edge cases** — error states, boundary conditions
+6. **CONSULT** — relevant past decisions, errors, and patterns from the pre-plan entity store query (injected verbatim)
 
 **Plan review**: @reviewer scores the skeleton (design review mode). ≥70 → proceed. 50-69 → iterate with @architect. <50 → re-plan.
 
@@ -234,9 +235,9 @@ Every plan must cover:
 
 0. **Consult pre-dispatch** — query for known pitfalls before any subagent dispatch:
    ```powershell
-   if (-not $env:JANUS_CONSULT_DISABLED) { python .opencode/tools/consult.py pre_dispatch "<agent_name>" "<model_name>" 2>$null }
+   python .opencode/tools/consult.py pre_dispatch "<agent_name>" "<model_name>" 2>$null
    ```
-   If output contains `errors` or `conventions`, inject relevant warnings into the handoff's CONSTRAINTS field. If degraded, skip silently.
+   Inject relevant warnings into the handoff's `CONSTRAINTS` field. If the tool is missing or output is empty, skip silently.
 
 **Before dispatching @coder**: After step 0 (pre-dispatch consult), ensure context files in `.opencode/context/` reflect current architectural decisions and plans. Write or update `decisions.md` with any new rationale, and update `conventions.md` if the plan introduces new patterns. The relevant `feature-<F00X>.md` must be current before any code is written.
 
@@ -247,6 +248,7 @@ Every handoff is a **self-contained prompt** — the sub-agent starts with zero 
 ```
 TASK: one-line description
 CONTEXT: relevant files, patterns, blackboard values (verbatim)
+CONSULT: relevant past decisions, errors, patterns from entity store (verabtim — from pre_dispatch query)
 PLAN: the skeleton — files, data flow, signatures, boundaries, edge cases
 CONSTRAINTS: what NOT to do, file conflicts, required imports
 OUTPUT: exact format — diff, code block, JSON, or markdown
@@ -322,9 +324,9 @@ Load `quality-gate` skill for the 4-phase gate: self-review → QA+review → or
 
 5. **Consult post-verify** — check changed files against stored conventions:
    ```powershell
-   if (-not $env:JANUS_CONSULT_DISABLED) { python .opencode/tools/consult.py post_verify "<feature>" "<file1,file2,...>" 2>$null }
+   python .opencode/tools/consult.py post_verify "<feature>" "<file1,file2,...>" 2>$null
    ```
-   If output contains convention violations, flag them in the feature summary. If degraded, skip silently.
+   Flag any convention violations in the feature summary. If the tool is missing or output is empty, skip silently.
 
 ## FAILURE & RECOVERY
 

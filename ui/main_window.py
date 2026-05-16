@@ -1,12 +1,13 @@
 import os
 
-from PySide6.QtCore import Qt, QTimer, Slot
-from PySide6.QtGui import QAction, QTextCursor
+from PySide6.QtCore import QSize, Qt, QTimer, Slot
+from PySide6.QtGui import QAction, QColor, QStandardItem, QStandardItemModel, QTextCursor
 from PySide6.QtWidgets import (
     QCheckBox,
     QFileSystemModel,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
@@ -73,6 +74,10 @@ class MainWindow(QMainWindow):
                 "Config Warnings",
                 "OpenCode config issues detected:\n\n" + "\n".join(config_warnings),
             )
+
+        # Mission tab state tracking
+        self._prev_mission_status = None
+        self._all_memories = []
 
         # Defer slow CLI calls until event loop is running - keeps startup instant
         QTimer.singleShot(0, self._load_models_async)
@@ -176,7 +181,20 @@ class MainWindow(QMainWindow):
         # Memory Tab
         self.memory_widget = QWidget()
         self.memory_layout = QVBoxLayout(self.memory_widget)
+
+        # Search box for filtering memory entries by key
+        self.memory_search = QLineEdit()
+        self.memory_search.setPlaceholderText("Search memory by key…")
+        self.memory_search.textChanged.connect(self._filter_memory)
+        self.memory_search.setStyleSheet(
+            "QLineEdit { background: #3c3c3c; color: #d4d4d4; border: 1px solid #555; "
+            "border-radius: 3px; padding: 4px 8px; font-size: 12px; }"
+        )
+        self.memory_layout.addWidget(self.memory_search)
+
         self.memory_list = QListWidget()
+        self.memory_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.memory_list.customContextMenuRequested.connect(self._show_memory_context_menu)
         self.memory_layout.addWidget(self.memory_list)
 
         self.mem_btn_layout = QHBoxLayout()
@@ -246,6 +264,9 @@ class MainWindow(QMainWindow):
         self.sidebar_tabs.addTab(self.mission_tab, "Mission")
         self._setup_mission_tab()
 
+        # Repo Map Tab
+        self._setup_repomap_tab()
+
         self.splitter.addWidget(self.sidebar_tabs)
 
     def add_manual_memory(self):
@@ -273,15 +294,65 @@ class MainWindow(QMainWindow):
         self.refresh_memory()
 
     def refresh_memory(self):
-        self.memory_list.clear()
         from core.memory import AgentMemory
 
         mem = AgentMemory()
-        memories = mem.retrieve(os.getcwd())
-        for key, value in memories:
-            item = QListWidgetItem(f"{key}: {value}")
+        self._all_memories = mem.retrieve_with_timestamps(os.getcwd())
+        filter_text = self.memory_search.text().strip().lower() if hasattr(self, "memory_search") else ""
+        self._render_memory_list(filter_text)
+
+    def _render_memory_list(self, filter_text=""):
+        """Populate the memory list from self._all_memories with optional filter."""
+        self.memory_list.clear()
+        from datetime import datetime
+
+        from utils.helpers import format_timestamp
+
+        for key, value, tags, time_updated in self._all_memories:
+            if filter_text and filter_text not in key.lower():
+                continue
+
+            dt = datetime.fromtimestamp(time_updated) if time_updated else None
+            time_str = format_timestamp(dt) if dt else ""
+
+            # Two-line display: key:value on top, timestamp below in smaller font
+            widget = QWidget()
+            layout = QVBoxLayout(widget)
+            layout.setContentsMargins(4, 2, 4, 2)
+            layout.setSpacing(1)
+
+            main_label = QLabel(f"{key}: {value}")
+            main_label.setStyleSheet("color: #d4d4d4; font-size: 12px;")
+            main_label.setWordWrap(True)
+
+            time_label = QLabel(time_str)
+            time_label.setStyleSheet("color: #888; font-size: 10px;")
+
+            layout.addWidget(main_label)
+            layout.addWidget(time_label)
+
+            item = QListWidgetItem()
             item.setData(Qt.UserRole, key)
+            item.setSizeHint(QSize(0, 38))
             self.memory_list.addItem(item)
+            self.memory_list.setItemWidget(item, widget)
+
+    def _filter_memory(self, text):
+        """Real-time search filter on memory entries by key substring."""
+        self._render_memory_list(text.strip().lower())
+
+    def _show_memory_context_menu(self, pos):
+        """Right-click context menu for memory list items."""
+        item = self.memory_list.itemAt(pos)
+        if not item:
+            return
+        self.memory_list.setCurrentItem(item)
+        from PySide6.QtWidgets import QMenu
+
+        menu = QMenu(self)
+        delete_action = menu.addAction("Delete")
+        delete_action.triggered.connect(self.delete_selected_memory)
+        menu.exec(self.memory_list.mapToGlobal(pos))
 
     def refresh_sessions(self):
         self.session_list.clear()
@@ -982,8 +1053,26 @@ class MainWindow(QMainWindow):
         diag_placeholder.setStyleSheet("font-size: 11px; color: #888; margin-top: 6px;")
         self.mission_layout.addWidget(diag_placeholder)
 
+        # ── Error log display ──
+        error_label = QLabel("Recent errors:")
+        error_label.setStyleSheet("font-size: 11px; color: #888; margin-top: 4px;")
+        self.mission_error_log = QTextEdit()
+        self.mission_error_log.setReadOnly(True)
+        self.mission_error_log.setMaximumHeight(100)
+        self.mission_error_log.setStyleSheet(
+            "QTextEdit { background: #1e1e1e; color: #F44336; border: 1px solid #3c3c3c; "
+            "border-radius: 3px; padding: 4px; font-size: 10px; font-family: monospace; }"
+        )
+        self.mission_layout.addWidget(error_label)
+        self.mission_layout.addWidget(self.mission_error_log)
+
         self.mission_layout.addStretch()
         self.refresh_mission()
+
+        # Auto-refresh timer: fires every 2s but only refreshes when tab is visible
+        self.mission_timer = QTimer(self)
+        self.mission_timer.timeout.connect(self._refresh_mission_if_visible)
+        self.mission_timer.start(2000)
 
     def refresh_mission(self):
         import json
@@ -1011,6 +1100,11 @@ class MainWindow(QMainWindow):
 
         # Status badge
         status = mission.get("status", "unknown")
+        # Flash tab if mission status changed
+        if self._prev_mission_status is not None and self._prev_mission_status != status:
+            self._flash_mission_tab()
+        self._prev_mission_status = status
+
         status_colors = {
             "planning": "#f0ad4e",
             "in_progress": "#5bc0de",
@@ -1068,6 +1162,156 @@ class MainWindow(QMainWindow):
 
         self.mission_resume_btn.setEnabled(status == "in_progress")
         self.mission_clear_btn.setEnabled(True)
+
+    def _refresh_mission_if_visible(self):
+        """Refresh mission data only when the Mission tab is visible."""
+        if self.sidebar_tabs.currentWidget() == self.mission_tab:
+            self.refresh_mission()
+            self._update_error_log()
+
+    def _update_error_log(self):
+        """Read the last 5 lines from error-log.jsonl and display them."""
+        import json
+        from pathlib import Path
+
+        log_path = Path(os.getcwd()) / ".opencode" / "error-log.jsonl"
+        if not log_path.exists():
+            self.mission_error_log.setText("(no error log)")
+            return
+
+        try:
+            lines = log_path.read_text(encoding="utf-8").strip().splitlines()
+            last = lines[-5:] if len(lines) >= 5 else lines
+            parts = []
+            for line in last:
+                try:
+                    entry = json.loads(line)
+                    ts = entry.get("timestamp", "?")[:19]
+                    etype = entry.get("error_type", "?")
+                    ctx = entry.get("context", "?")
+                    parts.append(f"[{ts}] {etype}: {ctx[:80]}")
+                except json.JSONDecodeError:
+                    parts.append(line.strip()[:100])
+            self.mission_error_log.setText("\n".join(parts) if parts else "(no errors)")
+        except Exception as e:
+            self.mission_error_log.setText(f"(read error: {e})")
+
+    def _flash_mission_tab(self):
+        """Briefly change the Mission tab label color to indicate status change."""
+        for i in range(self.sidebar_tabs.count()):
+            if self.sidebar_tabs.tabText(i) == "Mission":
+                tab_bar = self.sidebar_tabs.tabBar()
+                tab_bar.setTabTextColor(i, QColor("#FFA500"))
+                QTimer.singleShot(1000, lambda idx=i: self._revert_tab_color(idx))
+                break
+
+    def _revert_tab_color(self, index):
+        """Revert Mission tab label color back to default."""
+        self.sidebar_tabs.tabBar().setTabTextColor(index, QColor("#d4d4d4"))
+
+    # -----------------------------------------------------------------------
+    # Repo Map tab
+    # -----------------------------------------------------------------------
+
+    def _setup_repomap_tab(self):
+        """Set up the Repo Map sidebar tab with a project file tree view."""
+        self.repomap_widget = QWidget()
+        repomap_layout = QVBoxLayout(self.repomap_widget)
+        repomap_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Header row with refresh button
+        header_row = QHBoxLayout()
+        repomap_title = QLabel("Project File Map")
+        repomap_title.setStyleSheet("font-weight: bold; font-size: 12px; padding: 4px;")
+        self.repomap_refresh_btn = QPushButton("🔄")
+        self.repomap_refresh_btn.setFixedWidth(32)
+        self.repomap_refresh_btn.setToolTip("Rescan file structure")
+        self.repomap_refresh_btn.clicked.connect(self._refresh_repomap)
+        header_row.addWidget(repomap_title)
+        header_row.addStretch()
+        header_row.addWidget(self.repomap_refresh_btn)
+        repomap_layout.addLayout(header_row)
+
+        # Tree view
+        self.repomap_tree = QTreeView()
+        self.repomap_tree.setHeaderHidden(True)
+        self.repomap_tree.setAnimated(True)
+        self.repomap_tree.setIndentation(16)
+        repomap_layout.addWidget(self.repomap_tree)
+
+        self._refresh_repomap()
+        self.sidebar_tabs.addTab(self.repomap_widget, "Repo Map")
+
+    def _refresh_repomap(self):
+        """Rebuild the repo map tree model from the filesystem."""
+        model = self._build_repomap_model(os.getcwd())
+        self.repomap_tree.setModel(model)
+        self.repomap_tree.expandToDepth(0)
+
+    def _build_repomap_model(self, root_path):
+        """Build a QStandardItemModel from the directory tree, respecting .gitignore."""
+        model = QStandardItemModel()
+        model.setHorizontalHeaderLabels(["Name"])
+        root_item = model.invisibleRootItem()
+        gitignore_patterns = self._parse_gitignore(root_path)
+        self._add_dir_to_model(root_item, root_path, root_path, gitignore_patterns)
+        return model
+
+    def _add_dir_to_model(self, parent_item, base_path, dir_path, gitignore_patterns):
+        """Recursively add directory entries to the tree model."""
+        import fnmatch
+
+        try:
+            entries = sorted(os.listdir(dir_path))
+        except PermissionError:
+            return
+
+        for entry in entries:
+            full_path = os.path.join(dir_path, entry)
+            rel_path = os.path.relpath(full_path, base_path).replace("\\", "/")
+            is_dir = os.path.isdir(full_path)
+
+            # Check against gitignore patterns
+            ignored = False
+            for pattern in gitignore_patterns:
+                stripped = pattern.rstrip("/")
+                if fnmatch.fnmatch(entry, stripped) or fnmatch.fnmatch(rel_path, stripped):
+                    ignored = True
+                    break
+
+            item = QStandardItem(entry)
+            item.setEditable(False)
+
+            if ignored:
+                item.setForeground(QColor("#555555"))
+                item.setToolTip("Ignored by .gitignore")
+            elif is_dir:
+                item.setForeground(QColor("#569CD6"))
+            else:
+                item.setForeground(QColor("#cccccc"))
+
+            if is_dir:
+                self._add_dir_to_model(item, base_path, full_path, gitignore_patterns)
+
+            parent_item.appendRow(item)
+
+    @staticmethod
+    def _parse_gitignore(root_path):
+        """Parse .gitignore file and return a list of patterns."""
+        patterns = []
+        gitignore_path = os.path.join(root_path, ".gitignore")
+        if os.path.exists(gitignore_path):
+            try:
+                with open(gitignore_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            if line.startswith("/"):
+                                line = line[1:]
+                            patterns.append(line)
+            except Exception:
+                pass
+        return patterns
 
     def _resume_mission(self):
         """Inject resume.json content as the next message to send."""

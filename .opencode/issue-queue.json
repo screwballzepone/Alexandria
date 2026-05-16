@@ -1,0 +1,82 @@
+{
+  "issues": [
+    {
+      "number": 1,
+      "files": [
+        "ui/main_window.py",
+        "core/opencode_service.py"
+      ],
+      "tier": "STANDARD",
+      "ac": [
+        "Export button exports visible sessions to CSV",
+        "Columns: session_id, title, model, agent, created_at, message_count",
+        "File dialog for save location",
+        "Tested with 5+ sessions"
+      ],
+      "title": "feat: add CSV export to session history",
+      "status": "done",
+      "pr_number": 6
+    },
+    {
+      "number": 2,
+      "files": [
+        "core/worker.py"
+      ],
+      "tier": "TINY",
+      "ac": [
+        "Switching sessions kills previous worker cleanly",
+        "No zombie processes after 3 rapid switches"
+      ],
+      "title": "fix: worker thread not cleaning up",
+      "status": "done",
+      "pr_number": 7
+    },
+    {
+      "number": 3,
+      "files": [
+        "utils/helpers.py",
+        "ui/main_window.py"
+      ],
+      "tier": "STANDARD",
+      "ac": [
+        "All timestamps use same format",
+        "No hardcoded format strings duplicated"
+      ],
+      "title": "chore: format timestamps consistently",
+      "status": "done",
+      "pr_number": 8
+    },
+    {
+      "number": 4,
+      "files": [
+        "README.md or docs/providers.md"
+      ],
+      "tier": "TINY",
+      "ac": [
+        "One-page guide covering 3+ providers",
+        "API key env var names documented",
+        "Known issues with workarounds"
+      ],
+      "title": "docs: add provider configuration guide",
+      "status": "done",
+      "pr_number": 9
+    },
+    {
+      "number": 5,
+      "files": [
+        "ui/main_window.py"
+      ],
+      "tier": "TINY",
+      "ac": [
+        "Search box filters by title in real-time",
+        "Debounced input 300ms",
+        "Case-insensitive"
+      ],
+      "title": "feat: add session search by title",
+      "status": "done",
+      "pr_number": 10
+    }
+  ],
+  "generated": "2026-05-16T17:53:41Z",
+  "repo": "screwballzepone/Alexandria"
+}

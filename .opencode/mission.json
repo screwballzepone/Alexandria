@@ -1,20 +1,28 @@
 {
   "mission_id": "MEMORY-V0-2026-05-13",
-  "title": "Track A — Activate SQLite v0 Memory + Consult System",
-  "status": "completed",
+  "title": "Track A \u00e2\u20ac\u201d Activate SQLite v0 Memory + Consult System",
+  "status": "planning",
   "tier": "PROJECT",
-  "created_at": "2026-05-13T00:10:00Z",
-  "last_updated": "2026-05-13T00:15:00Z",
+  "created_at": "2026-05-16T17:10:28.153334+00:00",
+  "last_updated": "2026-05-16T17:10:28.153334+00:00",
   "description": "Activate JANUS's memory architecture on SQLite v0. Created context files, moved entity tools to active directory, backfilled error log with 10 entries, seeded entity store with 7 entities, wired 3 consult points into orchestrator prompt, wired write-back into mission completion skill, and fixed world_env.json auto-refresh. The entity store now returns live results for consult queries (verified: pre_plan 'add memory system to agent' returned 1 decision + 3 patterns).",
   "features": [
     {
       "id": "F001",
       "name": "Create .opencode/context/ seed files",
-      "status": "done",
+      "status": "pending",
       "depends_on": [],
       "acceptance_criteria_all_met": true,
-      "files": [".opencode/context/project-overview.md", ".opencode/context/decisions.md", ".opencode/context/conventions.md", ".opencode/context/feature-MEMORY-V0.md"],
-      "high_stakes": false
+      "files": [
+        ".opencode/context/project-overview.md",
+        ".opencode/context/decisions.md",
+        ".opencode/context/conventions.md",
+        ".opencode/context/feature-MEMORY-V0.md"
+      ],
+      "high_stakes": false,
+      "branch": null,
+      "summary_file": null,
+      "failures": 0
     },
     {
       "id": "F002",
@@ -22,7 +30,12 @@
       "status": "done",
       "depends_on": [],
       "acceptance_criteria_all_met": true,
-      "files": [".opencode/tools/lcn_write.py", ".opencode/tools/capability_assessor.py", ".opencode/tools/lcn_read.py", ".opencode/tools/consult.py"],
+      "files": [
+        ".opencode/tools/lcn_write.py",
+        ".opencode/tools/capability_assessor.py",
+        ".opencode/tools/lcn_read.py",
+        ".opencode/tools/consult.py"
+      ],
       "high_stakes": false
     },
     {
@@ -31,25 +44,38 @@
       "status": "done",
       "depends_on": [],
       "acceptance_criteria_all_met": true,
-      "files": [".opencode/error-log.jsonl", ".opencode/state/entity-seed.json"],
+      "files": [
+        ".opencode/error-log.jsonl",
+        ".opencode/state/entity-seed.json"
+      ],
       "high_stakes": false
     },
     {
       "id": "F004",
       "name": "Wire consult points into orchestrator prompt",
       "status": "done",
-      "depends_on": ["F001", "F002"],
+      "depends_on": [
+        "F001",
+        "F002"
+      ],
       "acceptance_criteria_all_met": true,
-      "files": [".opencode/agent/orchestrator.md", "C:\\Users\\lukas\\.config\\opencode\\agents\\orchestrator.md"],
+      "files": [
+        ".opencode/agent/orchestrator.md",
+        "C:\\Users\\lukas\\.config\\opencode\\agents\\orchestrator.md"
+      ],
       "high_stakes": true
     },
     {
       "id": "F005",
       "name": "Wire write-back into mission completion",
       "status": "done",
-      "depends_on": ["F002"],
+      "depends_on": [
+        "F002"
+      ],
       "acceptance_criteria_all_met": true,
-      "files": ["C:\\Users\\lukas\\.config\\opencode\\skills\\mission-completion\\SKILL.md"],
+      "files": [
+        "C:\\Users\\lukas\\.config\\opencode\\skills\\mission-completion\\SKILL.md"
+      ],
       "high_stakes": false
     },
     {
@@ -58,7 +84,10 @@
       "status": "done",
       "depends_on": [],
       "acceptance_criteria_all_met": true,
-      "files": [".opencode/agent/orchestrator.md", ".opencode/world_env.json"],
+      "files": [
+        ".opencode/agent/orchestrator.md",
+        ".opencode/world_env.json"
+      ],
       "high_stakes": true
     }
   ],
@@ -70,5 +99,6 @@
   "commits": [
     "8f47de6 feat: create context files, entity tools, consult system, backfill error log",
     "9bc9536 feat: wire 3 consult points into orchestrator, world_env auto-refresh, entity write-back to mission completion"
-  ]
+  ],
+  "resume_from": "feat-mission-status"
 }

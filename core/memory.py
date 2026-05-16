@@ -122,6 +122,19 @@ class AgentMemory:
         conn.close()
         return result
 
+    def retrieve_with_timestamps(self, workspace_path):
+        """Return all entries with timestamps: list of (key, value, tags, time_updated)."""
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT key, value, tags, time_updated"
+            " FROM project_memory WHERE workspace_path=?",
+            (workspace_path,),
+        )
+        result = cursor.fetchall()
+        conn.close()
+        return result
+
     def delete(self, workspace_path, key):
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
