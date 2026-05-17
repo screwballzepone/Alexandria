@@ -66,7 +66,7 @@ class AgentMemory:
             pass  # Never crash on logging failure
 
     def _connect(self):
-        conn = self._connect()
+        conn = sqlite3.connect(str(self.db_path))
         conn.execute("PRAGMA busy_timeout=5000")
         return conn
 
