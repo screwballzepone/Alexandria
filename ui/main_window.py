@@ -396,17 +396,19 @@ class MainWindow(QMainWindow):
 
         if len(full_text) > 40000:
             full_text = full_text[-40000:]
-        parts = [p.strip() for p in full_text.split("\n") if p.strip()]
-        html_parts = []
-        for i, part in enumerate(parts):
-            html_content = markdown.markdown(part, extensions=["fenced_code", "codehilite"])
-            html_parts.append(
+        parts = [p.strip() for p in full_text.split("\n\n") if p.strip()]
+        for part in parts:
+            is_user = part.startswith("You:")
+            color = "#4CAF50" if is_user else "#569CD6"
+            label = "You:" if is_user else "OpenCode:"
+            content = part[4:].lstrip() if part.startswith("You:") else part[9:].lstrip()
+            html_content = markdown.markdown(content, extensions=["fenced_code", "codehilite"])
+            self.chat_display.append(
                 f'<div style="margin-top:10px;margin-bottom:10px;background:#252526;'
                 f'padding:10px;border-radius:5px;">'
-                f'<span style="color:#569CD6;font-weight:bold;">[Part {i + 1}]:</span><br>'
+                f'<span style="color:{color};font-weight:bold;">{label}</span><br>'
                 f"{html_content}</div>"
             )
-        self.chat_display.append("".join(html_parts))
         self.chat_display.append("<hr><i>[Ready - continuing session]</i><hr>")
 
     def _on_session_load_error(self, error_msg):

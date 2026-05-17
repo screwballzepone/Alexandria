@@ -132,8 +132,12 @@ class OpenCodeService:
             for row in rows:
                 import json
                 data = json.loads(row[0])
-                if data.get("type") == "text" and data.get("text"):
-                    texts.append(data["text"])
-            return "\n".join(texts)
+                role = data.get("role", "")
+                text = data.get("text", "")
+                if not text:
+                    continue
+                prefix = "You:" if role == "user" else "OpenCode:"
+                texts.append(f"{prefix} {text}")
+            return "\n\n".join(texts)
         except sqlite3.Error:
             return ""
