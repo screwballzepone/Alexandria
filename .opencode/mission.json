@@ -1,104 +1,16 @@
 {
-  "mission_id": "MEMORY-V0-2026-05-13",
-  "title": "Track A \u00e2\u20ac\u201d Activate SQLite v0 Memory + Consult System",
-  "status": "planning",
+  "mission_id": "JANUS-PIPELINE-2026-05-17",
+  "title": "JANUS Pipeline — All 10 Phases Complete",
+  "status": "complete",
   "tier": "PROJECT",
-  "created_at": "2026-05-16T17:10:28.153334+00:00",
-  "last_updated": "2026-05-16T17:10:28.153334+00:00",
-  "description": "Activate JANUS's memory architecture on SQLite v0. Created context files, moved entity tools to active directory, backfilled error log with 10 entries, seeded entity store with 7 entities, wired 3 consult points into orchestrator prompt, wired write-back into mission completion skill, and fixed world_env.json auto-refresh. The entity store now returns live results for consult queries (verified: pre_plan 'add memory system to agent' returned 1 decision + 3 patterns).",
-  "features": [
-    {
-      "id": "F001",
-      "name": "Create .opencode/context/ seed files",
-      "status": "pending",
-      "depends_on": [],
-      "acceptance_criteria_all_met": true,
-      "files": [
-        ".opencode/context/project-overview.md",
-        ".opencode/context/decisions.md",
-        ".opencode/context/conventions.md",
-        ".opencode/context/feature-MEMORY-V0.md"
-      ],
-      "high_stakes": false,
-      "branch": null,
-      "summary_file": null,
-      "failures": 0
-    },
-    {
-      "id": "F002",
-      "name": "Move and refurbish entity tools to active directory",
-      "status": "done",
-      "depends_on": [],
-      "acceptance_criteria_all_met": true,
-      "files": [
-        ".opencode/tools/lcn_write.py",
-        ".opencode/tools/capability_assessor.py",
-        ".opencode/tools/lcn_read.py",
-        ".opencode/tools/consult.py"
-      ],
-      "high_stakes": false
-    },
-    {
-      "id": "F003",
-      "name": "Backfill error log from lessons.md and known issues",
-      "status": "done",
-      "depends_on": [],
-      "acceptance_criteria_all_met": true,
-      "files": [
-        ".opencode/error-log.jsonl",
-        ".opencode/state/entity-seed.json"
-      ],
-      "high_stakes": false
-    },
-    {
-      "id": "F004",
-      "name": "Wire consult points into orchestrator prompt",
-      "status": "done",
-      "depends_on": [
-        "F001",
-        "F002"
-      ],
-      "acceptance_criteria_all_met": true,
-      "files": [
-        ".opencode/agent/orchestrator.md",
-        "C:\\Users\\lukas\\.config\\opencode\\agents\\orchestrator.md"
-      ],
-      "high_stakes": true
-    },
-    {
-      "id": "F005",
-      "name": "Wire write-back into mission completion",
-      "status": "done",
-      "depends_on": [
-        "F002"
-      ],
-      "acceptance_criteria_all_met": true,
-      "files": [
-        "C:\\Users\\lukas\\.config\\opencode\\skills\\mission-completion\\SKILL.md"
-      ],
-      "high_stakes": false
-    },
-    {
-      "id": "F006",
-      "name": "Auto-refresh world_env.json and wire session bootstrap",
-      "status": "done",
-      "depends_on": [],
-      "acceptance_criteria_all_met": true,
-      "files": [
-        ".opencode/agent/orchestrator.md",
-        ".opencode/world_env.json"
-      ],
-      "high_stakes": true
-    }
-  ],
+  "created_at": "2026-05-13T00:00:00+00:00",
+  "last_updated": "2026-05-17T14:30:00+00:00",
+  "description": "Full JANUS pipeline execution. Started at 15% with stale docs. All 10 phases now DONE: A (Brain Unblock), B (lcn_jvp), C (4-Arm Burger's), D (LCN Wiring), E (Fallback Ladder), F (GUI Polish), G (Background Queue), H (Cortex Bridge), I (Cross-Project Brain), J (Self-Improvement MVP).",
+  "features": [],
   "error_budget": {
     "max_feature_failures": 3,
     "max_criteria_failures": 5,
     "failures_used": 0
   },
-  "commits": [
-    "8f47de6 feat: create context files, entity tools, consult system, backfill error log",
-    "9bc9536 feat: wire 3 consult points into orchestrator, world_env auto-refresh, entity write-back to mission completion"
-  ],
-  "resume_from": "feat-mission-status"
+  "commits": []
 }

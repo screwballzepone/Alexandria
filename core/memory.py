@@ -19,7 +19,7 @@ class AgentMemory:
 
     def _init_db(self):
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._connect()
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
@@ -65,6 +65,11 @@ class AgentMemory:
         except Exception:
             pass  # Never crash on logging failure
 
+    def _connect(self):
+        conn = self._connect()
+        conn.execute("PRAGMA busy_timeout=5000")
+        return conn
+
     def store(self, workspace_path, key, value, tags=""):
         """Upsert a key-value entry for the given workspace into project_memory.
 
@@ -76,8 +81,7 @@ class AgentMemory:
 
         Returns True on success, False on database error.
         """
-        conn = sqlite3.connect(str(self.db_path))
-        conn.execute("PRAGMA busy_timeout=5000")
+        conn = self._connect()
         for attempt in range(3):
             try:
                 cursor = conn.cursor()
@@ -116,7 +120,7 @@ class AgentMemory:
                 return False
 
     def retrieve(self, workspace_path, key=None):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._connect()
         cursor = conn.cursor()
         if key:
             cursor.execute(
@@ -136,7 +140,8 @@ class AgentMemory:
 
     def retrieve_with_timestamps(self, workspace_path):
         """Return all entries with timestamps: list of (key, value, tags, time_updated)."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._connect()
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
         cursor.execute(
             "SELECT key, value, tags, time_updated"
@@ -148,7 +153,7 @@ class AgentMemory:
         return result
 
     def delete(self, workspace_path, key):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._connect()
         cursor = conn.cursor()
         cursor.execute(
             "DELETE FROM project_memory WHERE workspace_path=? AND key=?",
