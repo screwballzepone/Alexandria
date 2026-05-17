@@ -14,7 +14,6 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Configuration — same path as deployed lcn_write.py uses
 # ---------------------------------------------------------------------------
@@ -67,6 +66,7 @@ def query_similar_decisions(
     context_keywords: str,
     limit: int = 5,
     db_path: str | Path | None = None,
+    cross_workspace: bool = False,
 ) -> list[dict[str, Any]]:
     """Query for past decisions relevant to a task.
 
@@ -109,21 +109,20 @@ def query_similar_decisions(
         for ent in candidates:
             data = ent.get("data", {})
 
-            # Workspace filter — if the entity has an explicit workspace_path
-            # it must match; entities without the field pass through.
-            ent_ws = data.get("workspace_path", "")
-            if ent_ws and workspace_path:
-                # Normalize separators for comparison
-                norm_ent = ent_ws.replace("\\", "/").rstrip("/")
-                norm_req = workspace_path.replace("\\", "/").rstrip("/")
-                if norm_ent != norm_req:
-                    # Also allow if any file_path is under workspace_path
-                    fps = data.get("file_paths", [])
-                    if not any(
-                        fp.replace("\\", "/").startswith(norm_req + "/")
-                        for fp in fps
-                    ):
-                        continue
+            # Workspace filter — skip unless cross_workspace is requested.
+            # Entities without workspace_path always pass through.
+            if not cross_workspace:
+                ent_ws = data.get("workspace_path", "")
+                if ent_ws and workspace_path:
+                    norm_ent = ent_ws.replace("\\", "/").rstrip("/")
+                    norm_req = workspace_path.replace("\\", "/").rstrip("/")
+                    if norm_ent != norm_req:
+                        fps = data.get("file_paths", [])
+                        if not any(
+                            fp.replace("\\", "/").startswith(norm_req + "/")
+                            for fp in fps
+                        ):
+                            continue
 
             # Relevance scoring
             if keywords:
@@ -156,6 +155,7 @@ def query_related_errors(
     error_type: str | None = None,
     limit: int = 5,
     db_path: str | Path | None = None,
+    cross_workspace: bool = False,
 ) -> list[dict[str, Any]]:
     """Query for errors matching agent/tool name or failure class.
 
@@ -221,6 +221,7 @@ def query_applicable_conventions(
     scope: str,
     limit: int = 5,
     db_path: str | Path | None = None,
+    cross_workspace: bool = False,
 ) -> list[dict[str, Any]]:
     """Query for conventions applicable to a given *scope*.
 
@@ -316,6 +317,7 @@ def query_recent_by_type(
     entity_type: str,
     limit: int = 10,
     db_path: str | Path | None = None,
+    cross_workspace: bool = False,
 ) -> list[dict[str, Any]]:
     """Most recent entities of a given type.
 

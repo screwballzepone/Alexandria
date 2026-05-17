@@ -152,6 +152,12 @@ Before classifying any task, I run a 30-second validation sweep to catch the #1 
    ```
    Inject output into the plan skeleton as a `CONSULT` block. If the tool is missing or output is empty, skip silently.
 
+   To query across all projects, add `--cross`:
+   ```powershell
+   python .opencode/tools/consult.py pre_plan "<task summary>" --cross 2>$null
+   ```
+   Use this for tasks that might benefit from patterns learned in other repos (OpenCode, MLP-Survival, clank.world, Afterlife: Equestria).
+
 7. **Cortex augment** — optionally boost consult results with LCN cortex relevance scores:
    ```powershell
    python -c "import sys; sys.path.insert(0,'.opencode/tools'); from lcn_bridge import LcnBridge; import json; r=json.load(open('.opencode/tools/consult.py')); print(json.dumps(LcnBridge().cortex_query(r.get('results',[]), '<task summary>')))" 2>$null

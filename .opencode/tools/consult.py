@@ -61,7 +61,7 @@ def _ok(data: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
-def cmd_pre_plan(task_description: str, db_path: str | None = None) -> str:
+def cmd_pre_plan(task_description: str, db_path: str | None = None, cross: bool = False) -> str:
     """Query past decisions + global conventions for planning context."""
     if not _READ_AVAILABLE:
         return _degraded("lcn_read module not available")
@@ -74,16 +74,19 @@ def cmd_pre_plan(task_description: str, db_path: str | None = None) -> str:
         context_keywords=task_description,
         limit=5,
         db_path=db_path,
+        cross_workspace=cross,
     )
     conventions = _read_module.query_applicable_conventions(
         scope="*",
         limit=5,
         db_path=db_path,
+        cross_workspace=cross,
     )
     recent_patterns = _read_module.query_recent_by_type(
         entity_type="Pattern",
         limit=3,
         db_path=db_path,
+        cross_workspace=cross,
     )
 
     return _ok(
@@ -103,7 +106,7 @@ def cmd_pre_plan(task_description: str, db_path: str | None = None) -> str:
     )
 
 
-def cmd_pre_dispatch(agent_name: str, model_name: str, db_path: str | None = None) -> str:
+def cmd_pre_dispatch(agent_name: str, model_name: str, db_path: str | None = None, cross: bool = False) -> str:
     """Query known errors for this agent + agent-scoped conventions."""
     if not _READ_AVAILABLE:
         return _degraded("lcn_read module not available")
@@ -112,6 +115,7 @@ def cmd_pre_dispatch(agent_name: str, model_name: str, db_path: str | None = Non
         agent_or_tool=agent_name,
         limit=5,
         db_path=db_path,
+        cross_workspace=cross,
     )
     # Conventions scoped to the agent directory
     agent_scope = f".opencode/agent/{agent_name}"
@@ -119,6 +123,7 @@ def cmd_pre_dispatch(agent_name: str, model_name: str, db_path: str | None = Non
         scope=agent_scope,
         limit=5,
         db_path=db_path,
+        cross_workspace=cross,
     )
 
     return _ok(
@@ -133,7 +138,7 @@ def cmd_pre_dispatch(agent_name: str, model_name: str, db_path: str | None = Non
     )
 
 
-def cmd_post_verify(feature_name: str, file_list: str, db_path: str | None = None) -> str:
+def cmd_post_verify(feature_name: str, file_list: str, db_path: str | None = None, cross: bool = False) -> str:
     """Check if changed files contradict any stored decisions or conventions."""
     if not _READ_AVAILABLE:
         return _degraded("lcn_read module not available")
@@ -154,6 +159,7 @@ def cmd_post_verify(feature_name: str, file_list: str, db_path: str | None = Non
                 scope=scope,
                 limit=10,
                 db_path=db_path,
+                cross_workspace=cross,
             )
             for c in convs:
                 nk = c.get("natural_key", "")
@@ -168,6 +174,7 @@ def cmd_post_verify(feature_name: str, file_list: str, db_path: str | None = Non
         context_keywords=feature_name,
         limit=20,
         db_path=db_path,
+        cross_workspace=cross,
     )
     potentially_contradicted = []
     for dec in all_decisions:
@@ -256,12 +263,22 @@ def main() -> None:
     p1 = sub.add_parser("pre_plan", help="Query past decisions + conventions for planning")
     p1.add_argument("task_description", help="Natural-language task description")
     p1.add_argument("--db-path", help=_DB_PATH_HELP)
+    p1.add_argument(
+        "--cross",
+        action="store_true",
+        help="Query across all workspaces (default: current only)",
+    )
 
     # pre_dispatch
     p2 = sub.add_parser("pre_dispatch", help="Query known pitfalls for an agent before dispatch")
     p2.add_argument("agent_name", help="Agent name (e.g. 'coder', 'explorer')")
     p2.add_argument("model_name", help="Model name (e.g. 'deepseek-v4-flash')")
     p2.add_argument("--db-path", help=_DB_PATH_HELP)
+    p2.add_argument(
+        "--cross",
+        action="store_true",
+        help="Query across all workspaces (default: current only)",
+    )
 
     # post_verify
     p3 = sub.add_parser("post_verify", help="Check if changed files contradict known decisions")
@@ -271,17 +288,23 @@ def main() -> None:
         help="Comma-separated list of changed file paths",
     )
     p3.add_argument("--db-path", help=_DB_PATH_HELP)
+    p3.add_argument(
+        "--cross",
+        action="store_true",
+        help="Query across all workspaces (default: current only)",
+    )
 
     args = parser.parse_args()
 
     try:
         db_path = args.db_path
+        cross = getattr(args, "cross", False)
         if args.command == "pre_plan":
-            output = cmd_pre_plan(args.task_description, db_path=db_path)
+            output = cmd_pre_plan(args.task_description, db_path=db_path, cross=cross)
         elif args.command == "pre_dispatch":
-            output = cmd_pre_dispatch(args.agent_name, args.model_name, db_path=db_path)
+            output = cmd_pre_dispatch(args.agent_name, args.model_name, db_path=db_path, cross=cross)
         elif args.command == "post_verify":
-            output = cmd_post_verify(args.feature_name, args.file_list, db_path=db_path)
+            output = cmd_post_verify(args.feature_name, args.file_list, db_path=db_path, cross=cross)
         else:
             output = _degraded(f"Unknown command: {args.command}")
 
