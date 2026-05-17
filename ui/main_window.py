@@ -526,19 +526,21 @@ class MainWindow(QMainWindow):
         return super().eventFilter(obj, event)
 
     def _show_slash_menu(self):
+        from pathlib import Path
+
         from PySide6.QtWidgets import QMenu
 
         menu = QMenu(self)
-        commands = [
-            ("/undo", "Revert last file changes"),
-            ("/redo", "Reapply last undone changes"),
-            ("/share", "Generate a shareable link"),
-            ("/init", "Analyze project and regenerate AGENTS.md"),
-        ]
-        for cmd, tooltip in commands:
-            action = menu.addAction(cmd)
-            action.setToolTip(tooltip)
-            action.triggered.connect(lambda checked=False, c=cmd: self._insert_slash_command(c))
+        cmd_dir = Path(".opencode/commands")
+        if cmd_dir.exists():
+            for f in sorted(cmd_dir.glob("*.md")):
+                cmd = f"/{f.stem}"
+                action = menu.addAction(cmd)
+                action.triggered.connect(lambda checked=False, c=cmd: self._insert_slash_command(c))
+        else:
+            for c in ["/undo", "/redo", "/lint", "/review"]:
+                action = menu.addAction(c)
+                action.triggered.connect(lambda checked=False, cc=c: self._insert_slash_command(cc))
         menu.exec(self.input_field.mapToGlobal(self.input_field.rect().bottomLeft()))
 
     def _insert_slash_command(self, cmd):
@@ -696,6 +698,17 @@ class MainWindow(QMainWindow):
         self.send_button.setText("…")
         self.input_field.setEnabled(False)
         self.mission_btn.setEnabled(False)
+        from PySide6.QtCore import QElapsedTimer
+
+        self._exec_timer = QElapsedTimer()
+        self._exec_timer.start()
+        self._exec_tick = QTimer(self)
+        self._exec_tick.timeout.connect(self._update_exec_timer)
+        self._exec_tick.start(1000)
+
+    def _update_exec_timer(self):
+        elapsed = self._exec_timer.elapsed() / 1000
+        self.statusBar().showMessage(f"Running… {elapsed:.0f}s")
 
     def _on_worker_done(self):
         self.send_button.setEnabled(True)
@@ -704,6 +717,10 @@ class MainWindow(QMainWindow):
         self.input_field.setFocus()
         self.mission_btn.setEnabled(True)
         self.refresh_mission()
+        if hasattr(self, "_exec_tick") and self._exec_tick:
+            self._exec_tick.stop()
+        elapsed = self._exec_timer.elapsed() / 1000 if hasattr(self, "_exec_timer") else 0
+        self.statusBar().showMessage(f"Done in {elapsed:.1f}s")
 
     # -----------------------------------------------------------------------
     # Toolbar actions
