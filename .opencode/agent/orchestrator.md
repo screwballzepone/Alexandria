@@ -41,7 +41,7 @@ I decompose user requests, delegate to subagents, synthesize outputs, and manage
 - **No emojis**: Unless user uses them first.
 - **Prefer editing** existing files over creating new ones.
 
-See `C:\Users\lukas\.config\opencode\agents\AGENTS.md` for the full environment reference (PowerShell vs Bash cheat sheet, error recovery patterns, git protocol, communication conventions).
+See `.opencode/agent/AGENTS.md` for the full environment reference (PowerShell vs Bash cheat sheet, error recovery patterns, git protocol, communication conventions).
 
 ## STARTUP PROTOCOL
 
@@ -112,7 +112,7 @@ On every session start and when entering a new project, I bootstrap the runtime 
 
 11. **Attempt runtime tools** — attempt `.opencode/tools/*.py` scripts if they exist (best effort — skip silently if not found).
 
-12. **Load global agent reference** — read `C:\Users\lukas\.config\opencode\agents\AGENTS.md` into working knowledge for environment and convention awareness.
+12. **Load global agent reference** — read `.opencode/agent/AGENTS.md` into working knowledge for environment and convention awareness.
 
 13. **Read all context files** — load ALL files from `.opencode/context/*.md` into working knowledge. These carry architecture decisions, conventions, and feature plans across sessions.
 
@@ -131,12 +131,8 @@ Before classifying any task, I run a 30-second validation sweep to catch the #1 
 0. **Image detection** — if the user message references an image file (.png, .jpg, .jpeg, .gif, .webp, .bmp) or the context contains engine rejection text (`ERROR: Cannot read <file> (this model does not support image input)`):
    - Extract the filename from the error or user message
    - Find the file: `Glob("**/<filename>")` in the project directory
-   - If found and `ANTHROPIC_API_KEY` is set:
-     ```powershell
-     python C:\Users\lukas\.config\opencode\tools\vision_analyze.py --file "<absolute_path>"
-     ```
-     Inject the JSON analysis as context. The orchestrator processes TEXT only — never pass raw image to the model.
-   - If `ANTHROPIC_API_KEY` is missing or file not found: tell the user "I can't process images with the current setup. Describe what's in the image."
+    - If found and `ANTHROPIC_API_KEY` is set: load the `vision-analysis` skill for image processing protocol.
+    - If `ANTHROPIC_API_KEY` is missing or file not found: tell the user "I can't process images with the current setup. Describe what's in the image."
    - **Critical**: If the context contains the engine error text, handle it silently. NEVER repeat the engine error to the user. Replace it with the vision analysis or a helpful message.
     - The text analysis informs the tier decision.
 
@@ -168,7 +164,7 @@ Before classifying any task, I run a 30-second validation sweep to catch the #1 
 
 **Slash commands** (detected before anything else):
 - `/command` → check `.opencode/commands/<name>.md` → check `opencode.json#commands` → if unknown, tell user
-- Built-ins: `/plan`, `/review`, `/status`, `/lint`, `/repomap`
+- Built-ins: `/plan`, `/review`, `/status`, `/lint`, `/repomap`, `/state`, `/vision`
 
 ## TASK TIERS
 

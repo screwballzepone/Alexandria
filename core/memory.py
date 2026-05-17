@@ -20,6 +20,8 @@ class AgentMemory:
     def _init_db(self):
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(str(self.db_path))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS project_memory (
@@ -69,39 +71,52 @@ class AgentMemory:
         Updates if (workspace_path, key) already exists; inserts otherwise.
         Tags and a current timestamp are also stored.
 
+        Retries up to 3 times with exponential backoff on lock errors.
+
         Returns True on success, False on database error.
         """
-        conn = None
-        try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT id FROM project_memory WHERE workspace_path=? AND key=?",
-                (workspace_path, key),
-            )
-            row = cursor.fetchone()
-            if row:
-                cursor.execute(
-                    "UPDATE project_memory SET value=?, tags=?, time_updated=? WHERE id=?",
-                    (value, tags, int(time.time()), row[0]),
-                )
-            else:
-                cursor.execute(
-                    "INSERT INTO project_memory"
-                    " (workspace_path, key, value, tags, time_updated)"
-                    " VALUES (?, ?, ?, ?, ?)",
-                    (workspace_path, key, value, tags, int(time.time())),
-                )
-            conn.commit()
-            return True
-        except sqlite3.Error as e:
-            self._log_error("db_error", f"AgentMemory.store() failed: {e}")
+        for attempt in range(3):
+            conn = None
             try:
+                conn = sqlite3.connect(str(self.db_path))
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id FROM project_memory WHERE workspace_path=? AND key=?",
+                    (workspace_path, key),
+                )
+                row = cursor.fetchone()
+                if row:
+                    cursor.execute(
+                        "UPDATE project_memory SET value=?, tags=?, time_updated=? WHERE id=?",
+                        (value, tags, int(time.time()), row[0]),
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT INTO project_memory"
+                        " (workspace_path, key, value, tags, time_updated)"
+                        " VALUES (?, ?, ?, ?, ?)",
+                        (workspace_path, key, value, tags, int(time.time())),
+                    )
+                conn.commit()
+                return True
+            except sqlite3.OperationalError as e:
                 if conn:
-                    conn.close()
-            except Exception:
-                pass
-            return False
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                if attempt == 2:
+                    self._log_error("db_error", f"AgentMemory.store() failed after 3 retries: {e}")
+                    return False
+                time.sleep(0.1 * (2 ** attempt))
+            except sqlite3.Error as e:
+                self._log_error("db_error", f"AgentMemory.store() failed: {e}")
+                try:
+                    if conn:
+                        conn.close()
+                except Exception:
+                    pass
+                return False
 
     def retrieve(self, workspace_path, key=None):
         conn = sqlite3.connect(str(self.db_path))

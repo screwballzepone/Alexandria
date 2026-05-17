@@ -53,10 +53,10 @@ For each docs file that references changed code:
 
 ### 4. Update AGENTS.md if agent configs changed
 
-If any `.opencode/agents/*.md` file was modified this commit:
+If any `.opencode/agent/*.md` file was modified this commit:
 ```
 # Check if AGENTS.md exists and has an entry for the changed agent
-Test-Path ".opencode/agents/AGENTS.md"
+Test-Path ".opencode/agent/AGENTS.md"
 Grep("AGENTS.md")
 ```
 Update the relevant entry in AGENTS.md to reflect the change.

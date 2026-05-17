@@ -8,6 +8,7 @@ rules that prompts alone can't guarantee.
 import json
 import logging
 import re
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -162,7 +163,7 @@ class HookRunner:
         return {"decision": "allow"}
 
     def _expand_vars(self, command, context):
-        """Expand $VARIABLES in hook commands."""
+        """Expand $VARIABLES in hook commands with shell-safe quoting."""
         vars_map = {
             "TOOL_NAME": context.get("tool_name", ""),
             "TOOL_INPUT": context.get("tool_input", ""),
@@ -171,5 +172,5 @@ class HookRunner:
         expanded = command
         for var, val in vars_map.items():
             if val:
-                expanded = expanded.replace(f"${var}", str(val))
+                expanded = expanded.replace(f"${var}", shlex.quote(str(val)))
         return expanded

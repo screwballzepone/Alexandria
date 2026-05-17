@@ -295,7 +295,6 @@
       "risk": "HIGH (system can get worse via local optima)",
       "prerequisites": [
         "Phase D-3 (memory write-back working — meta-agent has data)",
-        "eval_runner.py (already exists)",
         "Sufficient mission history (~20+ Enterprise-tier missions)"
       ],
       "unlocks": ["AGI property: improves methodology from outcomes"],

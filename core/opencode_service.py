@@ -107,22 +107,26 @@ class OpenCodeService:
 
     @classmethod
     def get_session_messages(cls, session_id, limit=50):
-        # Sanitize session_id: only allow hex chars and hyphens (UUID format)
-        sanitized = ''.join(c for c in session_id if c in '0123456789abcdefABCDEF-')
-        limit_int = int(limit)  # safe conversion, will raise ValueError if not int
+        import sqlite3
+        from pathlib import Path
 
-        # Single-line query required — Windows shell (shell=True) mangles multiline strings
-        query = (
-            f"SELECT p.text FROM message m "
-            f"JOIN part p ON m.id = p.message_id "
-            f"WHERE m.session_id = '{sanitized}' "
-            f"AND p.text IS NOT NULL "
-            f"ORDER BY m.time_created ASC "
-            f"LIMIT {limit_int};"
-        )
-        output = cls.run_cmd(f'opencode.cmd db "{query}" --format json', as_json=True)
-        if not output:
+        limit_int = int(limit)
+        db_path = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+        if not db_path.exists():
             return ""
 
-        full_text = "\n".join([row.get("text", "") for row in output if row.get("text")])
-        return full_text
+        try:
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT p.text FROM message m"
+                " JOIN part p ON m.id = p.message_id"
+                " WHERE m.session_id = ? AND p.text IS NOT NULL"
+                " ORDER BY m.time_created ASC LIMIT ?",
+                (session_id, limit_int),
+            )
+            rows = cursor.fetchall()
+            conn.close()
+            return "\n".join([row[0] for row in rows if row[0]])
+        except sqlite3.Error:
+            return ""

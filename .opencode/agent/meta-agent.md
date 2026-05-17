@@ -77,17 +77,11 @@ Before auto-applying, attempt to verify the change does not regress behavior:
 # 1. Back up the current agent file
 Copy-Item ".opencode/agent/<target-agent>.md" ".opencode/meta-agent/proposals/<target-agent>.md.bak"
 
-# 2. Check if eval_runner exists
-if (Test-Path ".opencode\tools\eval_runner.py") {
-    python .opencode/tools/eval_runner.py run <target-agent>
-} else {
-    # No eval tool available — skip verification, note it
-    Write-Output "No eval_runner found — skipping verification"
-}
+# 2. No automated eval tool available — skip verification, note it
+Write-Output "No automated eval tool — skipping verification"
 ```
 
-If eval_runner is available and returns a regression: revert the backup immediately
-and downgrade confidence by 0.2. Otherwise proceed.
+No automated verification available — proceed with caution.
 
 ### 4. Auto-apply if criteria met
 
