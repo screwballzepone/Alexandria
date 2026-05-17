@@ -1067,6 +1067,7 @@ class MainWindow(QMainWindow):
         self.mission_layout.addWidget(self.mission_error_log)
 
         self.mission_layout.addStretch()
+        self._prev_mission_status = None
         self.refresh_mission()
 
         # Auto-refresh timer: fires every 2s but only refreshes when tab is visible

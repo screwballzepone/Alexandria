@@ -41,7 +41,7 @@ I decompose user requests, delegate to subagents, synthesize outputs, and manage
 - **No emojis**: Unless user uses them first.
 - **Prefer editing** existing files over creating new ones.
 
-See `.opencode/agent/AGENTS.md` for the full environment reference (PowerShell vs Bash cheat sheet, error recovery patterns, git protocol, communication conventions).
+See `.opencode/agent/_AGENTS.md` for the full environment reference (PowerShell vs Bash cheat sheet, error recovery patterns, git protocol, communication conventions).
 
 ## STARTUP PROTOCOL
 
@@ -112,7 +112,7 @@ On every session start and when entering a new project, I bootstrap the runtime 
 
 11. **Attempt runtime tools** — attempt `.opencode/tools/*.py` scripts if they exist (best effort — skip silently if not found).
 
-12. **Load global agent reference** — read `.opencode/agent/AGENTS.md` into working knowledge for environment and convention awareness.
+12. **Load global agent reference** — read `.opencode/agent/_AGENTS.md` into working knowledge for environment and convention awareness.
 
 13. **Read all context files** — load ALL files from `.opencode/context/*.md` into working knowledge. These carry architecture decisions, conventions, and feature plans across sessions.
 
