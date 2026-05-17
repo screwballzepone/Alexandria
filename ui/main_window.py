@@ -5,14 +5,20 @@ from PySide6.QtGui import QAction, QColor, QStandardItem, QStandardItemModel, QT
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDialog,
     QFileSystemModel,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
+    QMenu,
+    QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSlider,
     QSplitter,
     QTabWidget,
     QTextBrowser,
@@ -28,6 +34,11 @@ from core.service_worker import ServiceWorker
 from core.worker import OpenCodeWorker
 from ui.dialogs import McpDialog, ProvidersDialog, StatsDialog
 
+# Phase 1 feature flags — set False to fall back to legacy layout
+USE_NEW_MENUBAR = True
+USE_NEW_TOOLBAR = True
+USE_NEW_SIDEBAR = True
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -41,7 +52,11 @@ class MainWindow(QMainWindow):
         self.splitter = QSplitter(Qt.Horizontal)
         self.setCentralWidget(self.splitter)
 
-        # 0. Setup Toolbar
+        # 0. Setup Menu Bar
+        if USE_NEW_MENUBAR:
+            self.setup_menu_bar()
+
+        # 1. Setup Toolbar
         self.setup_toolbar()
 
         # 1. Setup Left Sidebar (File Explorer)
@@ -69,13 +84,22 @@ class MainWindow(QMainWindow):
 
         config_warnings = check_config(os.getcwd())
         if config_warnings:
-            from PySide6.QtWidgets import QMessageBox
+            from PySide6.QtCore import QSettings
 
-            QMessageBox.warning(
-                self,
-                "Config Warnings",
-                "OpenCode config issues detected:\n\n" + "\n".join(config_warnings),
-            )
+            settings = QSettings("OpenCode", "OpenCodeGUI")
+            dont_show = settings.value("config/ignore_warnings", False, type=bool)
+            if not dont_show:
+                msg = QMessageBox(self)
+                msg.setWindowTitle("Config Warnings")
+                msg.setIcon(QMessageBox.Warning)
+                msg.setText(
+                    "OpenCode config issues detected:\n\n" + "\n".join(config_warnings)
+                )
+                cb = QCheckBox("Don't show again")
+                msg.setCheckBox(cb)
+                msg.exec()
+                if cb.isChecked():
+                    settings.setValue("config/ignore_warnings", True)
 
         # Mission tab state tracking
         self._prev_mission_status = None
@@ -86,10 +110,62 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self._load_agents_async)
 
     # -----------------------------------------------------------------------
+    # Menu Bar
+    # -----------------------------------------------------------------------
+
+    def setup_menu_bar(self):
+        """Build the application menu bar (File / Edit / View / Help)."""
+        mb = self.menuBar()
+
+        # ── File ──────────────────────────────────────────────────────
+        file_menu = mb.addMenu("&File")
+        file_menu.addAction("New Session", self.new_session, "Ctrl+N")
+        file_menu.addSeparator()
+        file_menu.addAction("E&xit", self.close, "Alt+F4")
+
+        # ── Edit ──────────────────────────────────────────────────────
+        edit_menu = mb.addMenu("&Edit")
+        edit_menu.addAction("Undo", self.run_undo, "Ctrl+Z")
+        edit_menu.addAction("Redo", self.run_redo, "Ctrl+Y")
+        edit_menu.addSeparator()
+        edit_menu.addAction("&Preferences...", self._show_preferences)
+
+        # ── View ──────────────────────────────────────────────────────
+        view_menu = mb.addMenu("&View")
+        self._act_toggle_sidebar = view_menu.addAction(
+            "Toggle Sidebar", self._toggle_sidebar_visibility, "Ctrl+B"
+        )
+        self._act_toggle_sidebar.setCheckable(True)
+        self._act_toggle_sidebar.setChecked(True)
+        self._act_toggle_status = view_menu.addAction(
+            "Toggle Status Panel", self._toggle_status_panel, "Ctrl+J"
+        )
+        self._act_toggle_status.setCheckable(True)
+        self._act_toggle_status.setChecked(False)
+        if not USE_NEW_SIDEBAR:
+            self._act_toggle_sidebar.setVisible(False)
+        view_menu.addSeparator()
+        self._act_view_mission = view_menu.addAction("&Mission Status", self._show_mission_dialog)
+        if not USE_NEW_SIDEBAR:
+            self._act_view_mission.setVisible(False)
+        view_menu.addSeparator()
+        view_menu.addAction("&Refresh", self.refresh_sessions, "F5")
+
+        # ── Help ──────────────────────────────────────────────────────
+        help_menu = mb.addMenu("&Help")
+        help_menu.addAction("Keyboard Shortcuts", self._show_shortcuts, "Ctrl+/")
+        help_menu.addSeparator()
+        help_menu.addAction("&About", self._show_about)
+
+    # -----------------------------------------------------------------------
     # Toolbar
     # -----------------------------------------------------------------------
 
     def setup_toolbar(self):
+        if USE_NEW_TOOLBAR:
+            self._setup_toolbar_new()
+            return
+        # --- legacy toolbar (Phase 0) ---
         self.toolbar = QToolBar("Main Toolbar")
         self.toolbar.setMovable(False)
         self.addToolBar(Qt.TopToolBarArea, self.toolbar)
@@ -134,11 +210,114 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(QAction("New Session", self, triggered=self.new_session))
         self.toolbar.addAction(QAction("↻", self, triggered=self.refresh_sessions, toolTip="Refresh"))
 
+    def _setup_toolbar_new(self):
+        """Phase 1 compact toolbar: Model | Agent | Plan | New Session | ⋮ More."""
+        self.toolbar = QToolBar("Main Toolbar")
+        self.toolbar.setMovable(False)
+        self.addToolBar(Qt.TopToolBarArea, self.toolbar)
+
+        # 1. Model selector (compact button)
+        self.model_btn = QPushButton("Model")
+        self.model_btn.setToolTip("Select model - grouped by provider")
+        self.model_btn.setStyleSheet(
+            "QPushButton { text-align: left; padding: 3px 6px; min-width: 70px; }"
+        )
+        self.model_btn.clicked.connect(self._show_model_menu)
+        self._selected_model = "Default Model (Auto)"
+        self._model_list = []
+        self.toolbar.addWidget(self.model_btn)
+
+        self.toolbar.addSeparator()
+
+        # 2. Agent selector (moved from chat area)
+        self.agent_combo = QComboBox()
+        self.agent_combo.setMinimumWidth(140)
+        self.agent_combo.setStyleSheet(
+            "QComboBox { padding: 2px 6px; font-size: 11px; }"
+        )
+        from core.opencode_service import OpenCodeService
+        pills_agents = OpenCodeService.get_agents_from_files()
+        if not pills_agents:
+            pills_agents = ["orchestrator"]
+        for a in pills_agents:
+            self.agent_combo.addItem(a)
+        self.agent_combo.setCurrentText("orchestrator")
+        self.agent_combo.currentTextChanged.connect(self._select_agent_pill)
+        self._selected_agent = "orchestrator"
+        self.toolbar.addWidget(self.agent_combo)
+
+        self.toolbar.addSeparator()
+
+        # 3. Plan Mode checkbox
+        self.plan_mode_check = QCheckBox("Plan")
+        self.plan_mode_check.setToolTip("Agent describes changes without modifying any files")
+        self.toolbar.addWidget(self.plan_mode_check)
+
+        self.toolbar.addSeparator()
+
+        # 4. New Session button
+        new_session_btn = QPushButton("New Session")
+        new_session_btn.setToolTip("Start a new chat session")
+        new_session_btn.clicked.connect(self.new_session)
+        self.toolbar.addWidget(new_session_btn)
+
+        self.toolbar.addSeparator()
+
+        # 5. ⋮ More overflow menu button
+        self.more_btn = QPushButton("⋮ More")
+        self.more_btn.setToolTip("Additional actions")
+        self.more_btn.setStyleSheet(
+            "QPushButton { padding: 3px 10px; font-weight: bold; }"
+        )
+        self.more_menu = QMenu(self)
+        self._build_more_menu()
+        self.more_btn.setMenu(self.more_menu)
+        self.toolbar.addWidget(self.more_btn)
+
+    def _build_more_menu(self):
+        """Populate the ⋮ More overflow menu."""
+        self.more_menu.clear()
+
+        # Low Token Mode (checkable — hidden checkbox acts as state holder)
+        self.low_token_check = QCheckBox("Low Token Mode", self)
+        self.low_token_check.setVisible(False)
+        self.low_token_check.setToolTip("Uses nano-coder and gemini-2.5-flash to save tokens")
+        self.low_token_check.stateChanged.connect(self.toggle_low_token)
+        act_low = self.more_menu.addAction("Low Token Mode")
+        act_low.setCheckable(True)
+        act_low.setChecked(False)
+        act_low.triggered.connect(self._toggle_low_token_from_menu)
+        self._more_low_token_action = act_low
+
+        self.more_menu.addSeparator()
+
+        self.more_menu.addAction("Providers...", self.run_providers)
+        self.more_menu.addAction("Agents...", self.run_agents)
+        self.more_menu.addAction("Stats...", self.run_stats)
+        self.more_menu.addAction("MCP Servers...", self.run_mcp)
+
+        self.more_menu.addSeparator()
+
+        self.more_menu.addAction("Undo", self.run_undo, "Ctrl+Z")
+        self.more_menu.addAction("Redo", self.run_redo, "Ctrl+Y")
+
+        self.more_menu.addSeparator()
+
+        self.more_menu.addAction("Refresh Sessions", self.refresh_sessions)
+
+    def _toggle_low_token_from_menu(self, checked):
+        """Sync the hidden low_token_checkbox state from the menu action."""
+        self.low_token_check.setChecked(checked)
+
     # -----------------------------------------------------------------------
     # Sidebar
     # -----------------------------------------------------------------------
 
     def setup_sidebar(self):
+        if USE_NEW_SIDEBAR:
+            self._setup_sidebar_new()
+            return
+        # --- legacy sidebar (Phase 0) ---
         self.sidebar_tabs = QTabWidget()
 
         # Files Tab
@@ -257,6 +436,262 @@ class MainWindow(QMainWindow):
         self._setup_repomap_tab()
 
         self.splitter.addWidget(self.sidebar_tabs)
+
+    def _setup_sidebar_new(self):
+        """Phase 1 sidebar: Sessions | Files | Workspace | Settings."""
+        self.sidebar_tabs = QTabWidget()
+
+        # ── Tab 0: Sessions ──────────────────────────────────────────
+        self._build_sidebar_sessions()
+
+        # ── Tab 1: Files ─────────────────────────────────────────────
+        self._build_sidebar_files()
+
+        # ── Tab 2: Workspace (collapsible sections) ──────────────────
+        self._build_sidebar_workspace()
+
+        # ── Tab 3: Settings ──────────────────────────────────────────
+        self._build_sidebar_settings()
+
+        self.splitter.addWidget(self.sidebar_tabs)
+
+        # Mission tab — kept as standalone widget (accessed via View menu)
+        self.mission_tab = QWidget()
+        self.mission_layout = QVBoxLayout(self.mission_tab)
+        self._setup_mission_tab()
+
+    def _build_sidebar_sessions(self):
+        """Sessions tab — list + fork button."""
+        self.session_list = QListWidget()
+        self.refresh_sessions()
+        self.session_list.itemClicked.connect(self.load_session)
+
+        session_widget = QWidget()
+        session_layout = QVBoxLayout(session_widget)
+        session_layout.setContentsMargins(0, 0, 0, 0)
+        session_layout.addWidget(self.session_list)
+        self.fork_btn = QPushButton("Fork Session")
+        self.fork_btn.setToolTip("Branch the selected session into a new one")
+        self.fork_btn.clicked.connect(self.fork_session)
+        session_layout.addWidget(self.fork_btn)
+        self.sidebar_tabs.addTab(session_widget, "Sessions")
+
+    def _build_sidebar_files(self):
+        """Files tab — QTreeView with QFileSystemModel."""
+        self.file_model = QFileSystemModel()
+        self.file_model.setRootPath(os.getcwd())
+
+        self.tree = QTreeView()
+        self.tree.setModel(self.file_model)
+        self.tree.setRootIndex(self.file_model.index(os.getcwd()))
+        for i in range(1, 4):
+            self.tree.hideColumn(i)
+        self.sidebar_tabs.addTab(self.tree, "Files")
+
+    def _build_sidebar_workspace(self):
+        """Workspace tab — collapsible QGroupBox sections for Memory, Plots, Repo Map."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
+        workspace_root = QWidget()
+        workspace_layout = QVBoxLayout(workspace_root)
+        workspace_layout.setContentsMargins(4, 4, 4, 4)
+        workspace_layout.setSpacing(4)
+
+        # ── Memory section ───────────────────────────────────────────
+        mem_box = QGroupBox("Memory")
+        mem_box.setCheckable(True)
+        mem_box.setChecked(True)
+        mem_layout = QVBoxLayout(mem_box)
+
+        self.memory_search = QLineEdit()
+        self.memory_search.setPlaceholderText("Search memory by key…")
+        self.memory_search.textChanged.connect(self._filter_memory)
+        self.memory_search.setStyleSheet(
+            "QLineEdit { background: #3c3c3c; color: #d4d4d4; border: 1px solid #555; "
+            "border-radius: 3px; padding: 4px 8px; font-size: 12px; }"
+        )
+        mem_layout.addWidget(self.memory_search)
+
+        self.memory_list = QListWidget()
+        self.memory_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.memory_list.customContextMenuRequested.connect(self._show_memory_context_menu)
+        mem_layout.addWidget(self.memory_list)
+
+        mem_btn_row = QHBoxLayout()
+        self.refresh_mem_btn = QPushButton("Refresh")
+        self.refresh_mem_btn.clicked.connect(self.refresh_memory)
+        self.add_mem_btn = QPushButton("Add Fact")
+        self.add_mem_btn.clicked.connect(self.add_manual_memory)
+        self.del_mem_btn = QPushButton("Delete")
+        self.del_mem_btn.clicked.connect(self.delete_selected_memory)
+        mem_btn_row.addWidget(self.refresh_mem_btn)
+        mem_btn_row.addWidget(self.add_mem_btn)
+        mem_btn_row.addWidget(self.del_mem_btn)
+        mem_layout.addLayout(mem_btn_row)
+
+        self.refresh_memory()
+        workspace_layout.addWidget(mem_box)
+
+        # ── Plots section ────────────────────────────────────────────
+        plots_box = QGroupBox("Plots")
+        plots_box.setCheckable(True)
+        plots_box.setChecked(False)
+        plots_inner = QVBoxLayout(plots_box)
+        plots_inner.setContentsMargins(4, 4, 4, 4)
+
+        plots_header = QHBoxLayout()
+        self.plots_refresh_btn = QPushButton("🔄")
+        self.plots_refresh_btn.setFixedWidth(32)
+        self.plots_refresh_btn.setToolTip("Rescan for plot files")
+        self.plots_refresh_btn.clicked.connect(self._refresh_plots_list)
+        plots_header.addStretch()
+        plots_header.addWidget(self.plots_refresh_btn)
+        plots_inner.addLayout(plots_header)
+
+        self.plots_list = QListWidget()
+        self.plots_list.setMinimumHeight(80)
+        self.plots_list.itemClicked.connect(self._show_plot_preview)
+        plots_inner.addWidget(self.plots_list)
+
+        self.plot_preview = QLabel("Click a plot file to preview")
+        self.plot_preview.setAlignment(Qt.AlignCenter)
+        self.plot_preview.setStyleSheet(
+            "QLabel { background-color: #1e1e1e; border: 1px solid #3c3c3c; "
+            "border-radius: 4px; padding: 8px; color: #888; font-size: 11px; }"
+        )
+        self.plot_preview.setMinimumHeight(160)
+        self.plot_preview.setScaledContents(False)
+        plots_inner.addWidget(self.plot_preview, stretch=1)
+
+        plots_btn_row = QHBoxLayout()
+        self.plots_open_btn = QPushButton("Open in external viewer")
+        self.plots_open_btn.clicked.connect(self._open_plot_external)
+        self.plots_open_btn.setEnabled(False)
+        plots_btn_row.addStretch()
+        plots_btn_row.addWidget(self.plots_open_btn)
+        plots_inner.addLayout(plots_btn_row)
+
+        self._refresh_plots_list()
+        workspace_layout.addWidget(plots_box)
+
+        # ── Repo Map section ─────────────────────────────────────────
+        repomap_box = QGroupBox("Project Map")
+        repomap_box.setCheckable(True)
+        repomap_box.setChecked(False)
+        repomap_inner = QVBoxLayout(repomap_box)
+
+        repomap_header = QHBoxLayout()
+        self.repomap_refresh_btn = QPushButton("🔄")
+        self.repomap_refresh_btn.setFixedWidth(32)
+        self.repomap_refresh_btn.setToolTip("Rescan file structure")
+        self.repomap_refresh_btn.clicked.connect(self._refresh_repomap)
+        repomap_header.addStretch()
+        repomap_header.addWidget(self.repomap_refresh_btn)
+        repomap_inner.addLayout(repomap_header)
+
+        self.repomap_tree = QTreeView()
+        self.repomap_tree.setHeaderHidden(True)
+        self.repomap_tree.setAnimated(True)
+        self.repomap_tree.setIndentation(16)
+        repomap_inner.addWidget(self.repomap_tree)
+
+        self._refresh_repomap()
+        workspace_layout.addWidget(repomap_box)
+
+        workspace_layout.addStretch()
+        scroll.setWidget(workspace_root)
+        self.sidebar_tabs.addTab(scroll, "Workspace")
+
+    def _build_sidebar_settings(self):
+        """Settings tab — theme, font size, keyboard shortcuts."""
+        settings_widget = QWidget()
+        settings_layout = QVBoxLayout(settings_widget)
+        settings_layout.setContentsMargins(8, 8, 8, 8)
+        settings_layout.setSpacing(8)
+
+        # Appearance
+        appearance_label = QLabel("Appearance")
+        appearance_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #888;")
+        settings_layout.addWidget(appearance_label)
+
+        sep1 = QLabel("─" * 30)
+        sep1.setStyleSheet("color: #3c3c3c;")
+        settings_layout.addWidget(sep1)
+
+        theme_row = QHBoxLayout()
+        theme_row.addWidget(QLabel("Theme:"))
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["Dark", "Light", "System"])
+        self.theme_combo.setCurrentText("Dark")
+        theme_row.addWidget(self.theme_combo)
+        theme_row.addStretch()
+        settings_layout.addLayout(theme_row)
+
+        font_row = QHBoxLayout()
+        font_row.addWidget(QLabel("Font size:"))
+        self.font_slider = QSlider(Qt.Horizontal)
+        self.font_slider.setRange(10, 24)
+        self.font_slider.setValue(14)
+        self.font_slider.setFixedWidth(120)
+        self.font_label = QLabel("14px")
+        self.font_slider.valueChanged.connect(
+            lambda v: self.font_label.setText(f"{v}px")
+        )
+        font_row.addWidget(self.font_slider)
+        font_row.addWidget(self.font_label)
+        font_row.addStretch()
+        settings_layout.addLayout(font_row)
+
+        # Chat
+        chat_label = QLabel("Chat")
+        chat_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #888; margin-top: 8px;")
+        settings_layout.addWidget(chat_label)
+
+        sep2 = QLabel("─" * 30)
+        sep2.setStyleSheet("color: #3c3c3c;")
+        settings_layout.addWidget(sep2)
+
+        self.show_timestamps_check = QCheckBox("Show timestamps")
+        self.show_timestamps_check.setChecked(True)
+        settings_layout.addWidget(self.show_timestamps_check)
+
+        self.collapse_thinking_check = QCheckBox("Collapse thinking by default")
+        self.collapse_thinking_check.setChecked(True)
+        settings_layout.addWidget(self.collapse_thinking_check)
+
+        # Shortcuts
+        shortcuts_label = QLabel("Shortcuts")
+        shortcuts_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #888; margin-top: 8px;")
+        settings_layout.addWidget(shortcuts_label)
+
+        sep3 = QLabel("─" * 30)
+        sep3.setStyleSheet("color: #3c3c3c;")
+        settings_layout.addWidget(sep3)
+
+        shortcuts_btn = QPushButton("View Keyboard Shortcuts")
+        shortcuts_btn.clicked.connect(self._show_shortcuts)
+        settings_layout.addWidget(shortcuts_btn)
+
+        # About
+        about_label = QLabel("About")
+        about_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #888; margin-top: 8px;")
+        settings_layout.addWidget(about_label)
+
+        sep4 = QLabel("─" * 30)
+        sep4.setStyleSheet("color: #3c3c3c;")
+        settings_layout.addWidget(sep4)
+
+        about_text = QLabel("OpenCode GUI v0.2")
+        about_text.setStyleSheet("color: #aaa; font-size: 11px;")
+        settings_layout.addWidget(about_text)
+
+        engine_text = QLabel("Engine: opencode.cmd")
+        engine_text.setStyleSheet("color: #888; font-size: 10px;")
+        settings_layout.addWidget(engine_text)
+
+        settings_layout.addStretch()
+        self.sidebar_tabs.addTab(settings_widget, "Settings")
 
     def add_manual_memory(self):
         from PySide6.QtWidgets import QInputDialog
@@ -430,27 +865,25 @@ class MainWindow(QMainWindow):
         self.chat_display.setOpenExternalLinks(True)
         self.right_layout.addWidget(self.chat_display)
 
-        # Agent selector — dropdown instead of horizontal pills
-        self._selected_agent = "orchestrator"
-
+        # Agent selector — in toolbar when USE_NEW_TOOLBAR, otherwise inline here
         agent_bar = QHBoxLayout()
-        from PySide6.QtWidgets import QLabel as _QL
-
-        agent_bar.addWidget(_QL("Agent:"))
-        self.agent_combo = QComboBox()
-        self.agent_combo.setMinimumWidth(140)
-        self.agent_combo.setStyleSheet(
-            "QComboBox { padding: 2px 6px; font-size: 11px; }"
-        )
-
-        pills_agents = OpenCodeService.get_agents_from_files()
-        if not pills_agents:
-            pills_agents = ["orchestrator"]
-        for a in pills_agents:
-            self.agent_combo.addItem(a)
-        self.agent_combo.setCurrentText("orchestrator")
-        self.agent_combo.currentTextChanged.connect(self._select_agent_pill)
-        agent_bar.addWidget(self.agent_combo)
+        if not USE_NEW_TOOLBAR:
+            self._selected_agent = "orchestrator"
+            from PySide6.QtWidgets import QLabel as _QL
+            agent_bar.addWidget(_QL("Agent:"))
+            self.agent_combo = QComboBox()
+            self.agent_combo.setMinimumWidth(140)
+            self.agent_combo.setStyleSheet(
+                "QComboBox { padding: 2px 6px; font-size: 11px; }"
+            )
+            pills_agents = OpenCodeService.get_agents_from_files()
+            if not pills_agents:
+                pills_agents = ["orchestrator"]
+            for a in pills_agents:
+                self.agent_combo.addItem(a)
+            self.agent_combo.setCurrentText("orchestrator")
+            self.agent_combo.currentTextChanged.connect(self._select_agent_pill)
+            agent_bar.addWidget(self.agent_combo)
 
         # Mission button — right-aligned in agent bar
         self.mission_btn = QPushButton("🚀 Mission")
@@ -594,8 +1027,6 @@ class MainWindow(QMainWindow):
         """Frame the current input as a PROJECT-tier mission and send it."""
         text = self.input_field.toPlainText().strip()
         if not text:
-            from PySide6.QtWidgets import QMessageBox
-
             QMessageBox.information(
                 self,
                 "Mission",
@@ -618,11 +1049,14 @@ class MainWindow(QMainWindow):
         self.input_field.setPlainText(mission_prompt)
         self.send_message()
 
-        # Switch to Mission tab so user can watch progress
-        for i in range(self.sidebar_tabs.count()):
-            if self.sidebar_tabs.tabText(i) == "Mission":
-                self.sidebar_tabs.setCurrentIndex(i)
-                break
+        # Show mission status (dialog in new sidebar, tab in legacy)
+        if USE_NEW_SIDEBAR:
+            self._show_mission_dialog()
+        else:
+            for i in range(self.sidebar_tabs.count()):
+                if self.sidebar_tabs.tabText(i) == "Mission":
+                    self.sidebar_tabs.setCurrentIndex(i)
+                    break
 
     # -----------------------------------------------------------------------
     # Worker signal handlers
@@ -779,8 +1213,6 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def run_github(self):
-        from PySide6.QtWidgets import QMessageBox
-
         QMessageBox.information(
             self,
             "GitHub Integration",
@@ -1149,8 +1581,11 @@ class MainWindow(QMainWindow):
         self.mission_clear_btn.setEnabled(True)
 
     def _refresh_mission_if_visible(self):
-        """Refresh mission data only when the Mission tab is visible."""
-        if self.sidebar_tabs.currentWidget() == self.mission_tab:
+        """Refresh mission data (always in new sidebar, only when visible in legacy)."""
+        if USE_NEW_SIDEBAR:
+            self.refresh_mission()
+            self._update_error_log()
+        elif self.sidebar_tabs.currentWidget() == self.mission_tab:
             self.refresh_mission()
             self._update_error_log()
 
@@ -1183,6 +1618,8 @@ class MainWindow(QMainWindow):
 
     def _flash_mission_tab(self):
         """Briefly change the Mission tab label color to indicate status change."""
+        if USE_NEW_SIDEBAR:
+            return  # No tab to flash in new sidebar
         for i in range(self.sidebar_tabs.count()):
             if self.sidebar_tabs.tabText(i) == "Mission":
                 tab_bar = self.sidebar_tabs.tabBar()
@@ -1192,6 +1629,8 @@ class MainWindow(QMainWindow):
 
     def _revert_tab_color(self, index):
         """Revert Mission tab label color back to default."""
+        if USE_NEW_SIDEBAR:
+            return
         self.sidebar_tabs.tabBar().setTabTextColor(index, QColor("#d4d4d4"))
 
     # -----------------------------------------------------------------------
@@ -1327,8 +1766,6 @@ class MainWindow(QMainWindow):
         """Delete mission.json and resume.json after confirmation."""
         from pathlib import Path
 
-        from PySide6.QtWidgets import QMessageBox
-
         reply = QMessageBox.question(
             self,
             "Clear Mission",
@@ -1342,6 +1779,147 @@ class MainWindow(QMainWindow):
                 if p.exists():
                     p.unlink()
             self.refresh_mission()
+
+    # -----------------------------------------------------------------------
+    # Phase 1 helpers: menus, dialogs, toggles
+    # -----------------------------------------------------------------------
+
+    def _show_preferences(self):
+        """Placeholder Preferences dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Preferences")
+        dlg.resize(400, 250)
+        layout = QVBoxLayout(dlg)
+        layout.addWidget(QLabel("Preferences will be available in a future update."))
+        layout.addStretch()
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dlg.accept)
+        layout.addWidget(close_btn)
+        dlg.exec()
+
+    def _show_about(self):
+        """About OpenCode dialog."""
+        QMessageBox.about(
+            self,
+            "About OpenCode",
+            "<h3>OpenCode GUI</h3>"
+            "<p>Version 0.2</p>"
+            "<p>A PySide6 desktop interface for OpenCode CLI.</p>"
+            "<p>22-agent multi-agent system for AI-assisted development.</p>"
+        )
+
+    def _show_shortcuts(self):
+        """Keyboard Shortcuts reference dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard Shortcuts")
+        dlg.resize(450, 400)
+        layout = QVBoxLayout(dlg)
+
+        text = (
+            "<h3>General</h3>"
+            "<pre>"
+            "Ctrl+N      New Session\n"
+            "Ctrl+Q      Quit\n"
+            "Ctrl+B      Toggle Sidebar\n"
+            "Ctrl+J      Toggle Status Panel\n"
+            "Ctrl+/      Show this dialog\n"
+            "F5          Refresh\n"
+            "</pre>"
+            "<h3>Chat</h3>"
+            "<pre>"
+            "Enter       Send message\n"
+            "Shift+Enter Newline\n"
+            "</pre>"
+            "<h3>Editing</h3>"
+            "<pre>"
+            "Ctrl+Z      Undo last changes\n"
+            "Ctrl+Y      Redo\n"
+            "</pre>"
+        )
+        label = QLabel(text)
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dlg.accept)
+        layout.addWidget(close_btn)
+        dlg.exec()
+
+    def _toggle_sidebar_visibility(self):
+        """Toggle sidebar visibility (Ctrl+B)."""
+        if not USE_NEW_SIDEBAR:
+            return
+        visible = self.sidebar_tabs.isVisible()
+        self.sidebar_tabs.setVisible(not visible)
+        if hasattr(self, "_act_toggle_sidebar"):
+            self._act_toggle_sidebar.setChecked(not visible)
+
+    def _toggle_status_panel(self):
+        """Toggle bottom status panel (Ctrl+B shortcut, placeholder for Phase 2)."""
+        if hasattr(self, "_act_toggle_status"):
+            self._act_toggle_status.setChecked(
+                not self._act_toggle_status.isChecked()
+            )
+
+    def _show_mission_dialog(self):
+        """Open mission status in a standalone dialog (new sidebar has no Mission tab)."""
+        import json
+        from pathlib import Path
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Mission Status")
+        dlg.resize(550, 450)
+        layout = QVBoxLayout(dlg)
+
+        mission_path = Path(os.getcwd()) / ".opencode" / "mission.json"
+        if not mission_path.exists():
+            layout.addWidget(QLabel("No active mission."))
+            close_btn = QPushButton("Close")
+            close_btn.clicked.connect(dlg.accept)
+            layout.addWidget(close_btn)
+            dlg.exec()
+            return
+
+        try:
+            mission = json.loads(mission_path.read_text(encoding="utf-8"))
+            title = mission.get("title", "Untitled Mission")
+            status = mission.get("status", "unknown")
+            features = mission.get("features", [])
+
+            title_label = QLabel(f"<b>{title}</b>  <i>({status})</i>")
+            layout.addWidget(title_label)
+
+            feat_text = QLabel()
+            feat_html = "<ul>"
+            for feat in features:
+                fstatus = feat.get("status", "pending")
+                fname = feat.get("title", feat.get("id", "?"))
+                icon = {"done": "✅", "failed": "❌", "in_progress": "🔄",
+                        "pending": "⏳", "skipped": "⏭"}.get(fstatus, "❓")
+                feat_html += f"<li>{icon} {fname} — <i>{fstatus}</i></li>"
+            feat_html += "</ul>"
+            feat_text.setText(feat_html)
+            layout.addWidget(feat_text)
+
+            btn_row = QHBoxLayout()
+            resume_btn = QPushButton("Resume Mission")
+            resume_btn.clicked.connect(lambda: (self._resume_mission(), dlg.accept()))
+            clear_btn = QPushButton("Clear Mission")
+            clear_btn.clicked.connect(self._clear_mission)
+            close_btn = QPushButton("Close")
+            close_btn.clicked.connect(dlg.accept)
+            btn_row.addWidget(resume_btn)
+            btn_row.addStretch()
+            btn_row.addWidget(clear_btn)
+            btn_row.addWidget(close_btn)
+            layout.addLayout(btn_row)
+        except Exception as e:
+            layout.addWidget(QLabel(f"Error reading mission: {e}"))
+            close_btn = QPushButton("Close")
+            close_btn.clicked.connect(dlg.accept)
+            layout.addWidget(close_btn)
+
+        dlg.exec()
 
     # -----------------------------------------------------------------------
     # Close
