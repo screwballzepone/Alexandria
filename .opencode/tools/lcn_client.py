@@ -1,10 +1,13 @@
 """lcn_client.py — LCN HTTP JSON client for the JANUS orchestrator.
 
 CLI Usage:
-    python lcn_client.py health       -> {"status": "ok", "uptime": X}
-    python lcn_client.py stats        -> {"entity_count": N, "db_path": "..."}
-    python lcn_client.py query <mode> [args...]   -> consult.py result
-    python lcn_client.py write <json-file>        -> {"written": true, "id": "..."}
+    python lcn_client.py health                          -> {"status": "ok", "uptime": X}
+    python lcn_client.py stats                           -> {"entity_count": N, "db_path": "..."}
+    python lcn_client.py query <mode> [args...]          -> consult.py result
+    python lcn_client.py write <json-file>               -> {"written": true, "id": "..."}
+    python lcn_client.py train <json-file>               -> cortex training diagnostics
+    python lcn_client.py cortex-query <json-file> <query> -> augmented results
+    python lcn_client.py cortex-status                   -> cortex bridge health check
 
 Python API:
     client = LcnClient()
@@ -12,6 +15,9 @@ Python API:
     client.query(mode, *args) -> dict
     client.write(entity_json) -> dict
     client.stats() -> dict
+    client.train(plan) -> dict
+    client.cortex_query(results, query) -> dict
+    client.cortex_status() -> dict
 
 Base URL configurable via LCN_SERVER_URL env var (default http://localhost:3737).
 """
@@ -101,6 +107,44 @@ class LcnClient:
         """GET /stats — returns entity count and DB metadata."""
         return self._request("GET", "/stats")
 
+    # ------------------------------------------------------------------
+    # Cortex bridge API
+    # ------------------------------------------------------------------
+
+    def train(self, plan: list[dict[str, Any]]) -> dict[str, Any]:
+        """POST /train — train cortex on a mission plan's entities.
+
+        Args:
+            plan: List of LCN entity dicts.
+
+        Returns:
+            Training diagnostics dict, or ``{"status": "offline"}``.
+        """
+        return self._request("POST", "/train", {"plan": plan})
+
+    def cortex_query(
+        self,
+        results: list[dict[str, Any]],
+        query: str,
+    ) -> dict[str, Any]:
+        """POST /cortex_query — augment results with cortex scores.
+
+        Args:
+            results: List of entity dicts from the LCN store.
+            query: Natural-language query text.
+
+        Returns:
+            Dict with ``results`` and ``count`` keys,
+            or ``{"status": "offline"}``.
+        """
+        return self._request(
+            "POST", "/cortex_query", {"results": results, "query": query}
+        )
+
+    def cortex_status(self) -> dict[str, Any]:
+        """GET /cortex_status — cortex bridge health check."""
+        return self._request("GET", "/cortex_status")
+
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -148,6 +192,63 @@ def _cli_write(client: LcnClient, args: list[str]) -> str:
     return json.dumps(result, indent=2, ensure_ascii=False)
 
 
+def _cli_train(client: LcnClient, args: list[str]) -> str:
+    if not args:
+        return json.dumps(
+            {"status": "error", "message": "Usage: lcn_client.py train <json-file>"},
+            indent=2,
+        )
+    file_path = args[0]
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            plan = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        return json.dumps(
+            {"status": "error", "message": f"Failed to read plan file: {exc}"},
+            indent=2,
+        )
+    if not isinstance(plan, list):
+        return json.dumps(
+            {"status": "error", "message": "Plan file must contain a JSON array of entities"},
+            indent=2,
+        )
+    result = client.train(plan)
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+def _cli_cortex_query(client: LcnClient, args: list[str]) -> str:
+    if not args:
+        return json.dumps(
+            {
+                "status": "error",
+                "message": "Usage: lcn_client.py cortex-query <results-json-file> <query-text>",
+            },
+            indent=2,
+        )
+    file_path = args[0]
+    query_text = " ".join(args[1:]) if len(args) > 1 else ""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            results = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        return json.dumps(
+            {"status": "error", "message": f"Failed to read results file: {exc}"},
+            indent=2,
+        )
+    if not isinstance(results, list):
+        return json.dumps(
+            {"status": "error", "message": "Results file must contain a JSON array"},
+            indent=2,
+        )
+    result = client.cortex_query(results, query_text)
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+def _cli_cortex_status(client: LcnClient) -> str:
+    result = client.cortex_status()
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
 def main() -> None:
     client = LcnClient()
 
@@ -166,9 +267,18 @@ def main() -> None:
         print(_cli_query(client, rest))
     elif cmd == "write":
         print(_cli_write(client, rest))
+    elif cmd == "train":
+        print(_cli_train(client, rest))
+    elif cmd == "cortex-query":
+        print(_cli_cortex_query(client, rest))
+    elif cmd == "cortex-status":
+        print(_cli_cortex_status(client))
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
-        print("Usage: lcn_client.py <health|stats|query|write> [args...]", file=sys.stderr)
+        print(
+            "Usage: lcn_client.py <health|stats|query|write|train|cortex-query|cortex-status> [args...]",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
 
