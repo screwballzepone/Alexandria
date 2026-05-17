@@ -88,7 +88,8 @@ class OpenCodeService:
     @classmethod
     def get_sessions(cls):
         # We query the DB directly to get the latest sessions
-        query = "SELECT id, title, time_updated FROM session ORDER BY time_updated DESC LIMIT 50;"
+        # Filter out subagent sessions (have parent_id set)
+        query = "SELECT id, title, time_updated FROM session WHERE parent_id IS NULL AND time_archived IS NULL ORDER BY time_updated DESC LIMIT 50;"
         output = cls.run_cmd(f'opencode.cmd db "{query}" --format json', as_json=True)
 
         if not output:
