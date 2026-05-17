@@ -394,8 +394,6 @@ class MainWindow(QMainWindow):
             self.chat_display.append("<hr><i>[Ready - continuing session]</i><hr>")
             return
 
-        if len(full_text) > 40000:
-            full_text = full_text[-40000:]
         parts = [p.strip() for p in full_text.split("\n\n") if p.strip()]
         for part in parts:
             is_user = part.startswith("You:")
