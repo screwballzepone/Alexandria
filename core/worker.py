@@ -10,6 +10,7 @@ from core.hooks import HookRunner
 class OpenCodeWorker(QThread):
     # Signals for different types of output
     text_received = Signal(str)
+    thinking_received = Signal(str)
     tool_started = Signal(str, str)  # tool_name, details
     tool_finished = Signal(str)
     error_received = Signal(str)
@@ -148,6 +149,11 @@ class OpenCodeWorker(QThread):
                             text_content = part.get("text", "")
                             if text_content:
                                 self.text_received.emit(text_content)
+
+                        elif event_type == "thinking":
+                            thinking_text = part.get("text", "")
+                            if thinking_text:
+                                self.thinking_received.emit(thinking_text)
 
                         elif event_type == "tool_use":
                             tool_name = part.get("tool", "unknown")
