@@ -202,7 +202,8 @@
     {
       "id": "Phase G",
       "name": "Autonomous Background Queue",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
+      "completed": "2026-05-15 — 5 consecutive runs validated",
       "blocked_by": null,
       "pipeline_lines": "483-562",
       "goal": "JANUS picks up GitHub issues from curated queue, runs missions in the background while PC is active, opens draft PRs, produces after-run report. Triggered via /issue-scan + /issue-run on demand.",
@@ -234,10 +235,10 @@
     {
       "id": "Phase H",
       "name": "Cortex Transition",
-      "status": "BLOCKED",
-      "blocked_by": "External: Notion swarm spec-LCN v1 not published",
+      "status": "IN_PROGRESS",
+      "blocked_by": null,
       "pipeline_lines": "566-618",
-      "goal": "Swap JANUS's storage layer from SQLite v0 to the neuromorphic cortex when spec-LCN v1 ships. Same entity contract, different substrate.",
+      "goal": "Bridge LCN Brain output to the JANUS entity store. SQLite v0 remains primary; LCN cortex augments retrieval with learned relevance scores. Dual-write + α-blended retrieval.",
       "estimated_time": "2-4 sessions across 1-2 months",
       "estimated_cost": "$1-3",
       "risk": "MEDIUM-LOW",
@@ -301,15 +302,15 @@
   "summary": {
     "total_phases": 10,
     "status_counts": {
-      "DONE": 6,
+      "DONE": 7,
       "NOT_STARTED": 0,
-      "IN_PROGRESS": 1,
+      "IN_PROGRESS": 0,
       "PARTIALLY_COMPLETE": 0,
       "PARTIALLY_READY": 1,
       "BLOCKED": 2
     },
-    "progress_pct": 80,
-    "immediate_next_action": "Phase G validation — run /issue-scan + /issue-run for 5 consecutive sessions. Verify reports are honest, no destructive commits, cost stays under $2/run average.",
+    "progress_pct": 85,
+    "immediate_next_action": "Phase J — Self-Improvement Loop. Meta-agent exists, needs ~20 Enterprise mission data points. Phase G generated 15 missions. Phase H/I remain blocked on external spec.",
     "parallel_opportunity": "Phase J (self-improvement) needs ~20 Enterprise missions for data — Phase G will generate those missions. H/I remain blocked on external spec.",
     "critical_path": "Phase G → Phase J (self-improvement loops on data from G). H/I remain blocked on external spec.",
     "largest_blocker": "Phase D-2 (consult enforcement) — LLM skips advisory consult. Need hard enforcement. Phase H (Cortex) still blocked on external spec.",

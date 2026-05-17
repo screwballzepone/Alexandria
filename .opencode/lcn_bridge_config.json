@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "cortex_state_path": "~/.local/share/opencode/lcn_cortex.npz",
+  "training": {
+    "min_entities": 3,
+    "learning_rate": 0.001
+  },
+  "retrieval": {
+    "alpha": 0.3
+  }
+}

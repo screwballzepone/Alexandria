@@ -4,10 +4,13 @@ Provides a REST API for querying and writing to the LCN entity store.
 Zero external dependencies — uses stdlib http.server + subprocess only.
 
 Endpoints:
-  GET  /health   → {"status": "ok", "uptime": <seconds>}
-  POST /query    → delegates to consult.py CLI, returns result as JSON
-  POST /write    → pipes entity JSON to lcn_write.py stdin, returns {"written": true, "id": "..."}
-  GET  /stats    → {"entity_count": N, "db_path": "..."}
+  GET  /health          → {"status": "ok", "uptime": <seconds>}
+  POST /query           → delegates to consult.py CLI, returns result as JSON
+  POST /write           → pipes entity JSON to lcn_write.py stdin, returns {"written": true, "id": "..."}
+  GET  /stats           → {"entity_count": N, "db_path": "..."}
+  POST /train           → train cortex on mission entities
+  POST /cortex_query    → augment SQLite results with cortex relevance scores
+  GET  /cortex_status   → cortex bridge health check
 """
 
 from __future__ import annotations
@@ -39,6 +42,27 @@ DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "opencode" / "lcn_memory.db
 # Server config
 HOST = "localhost"
 PORT = 3737
+
+# ---------------------------------------------------------------------------
+# LCN Cortex bridge (lazy-initialized)
+# ---------------------------------------------------------------------------
+
+
+_BRIDGE: Any | None = None
+
+
+def _get_bridge() -> Any:
+    global _BRIDGE
+    if _BRIDGE is None:
+        # Graceful import — bridge handles degradation internally
+        try:
+            from lcn_bridge import LcnBridge
+
+            _BRIDGE = LcnBridge()
+        except ImportError:
+            _BRIDGE = False  # sentinel: don't retry
+    return _BRIDGE if _BRIDGE is not False else None
+
 
 # ---------------------------------------------------------------------------
 # Server state
@@ -245,6 +269,107 @@ def _handle_stats(handler: BaseHTTPRequestHandler) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cortex bridge handlers
+# ---------------------------------------------------------------------------
+
+
+def _handle_train(handler: BaseHTTPRequestHandler) -> None:
+    """POST /train — train cortex on a mission plan's entities."""
+    bridge = _get_bridge()
+    if bridge is None:
+        _json_response(
+            handler,
+            {"status": "error", "message": "LCN bridge not available (import failed)"},
+            status=503,
+        )
+        _log("POST", "/train", 503)
+        return
+
+    body = _read_body(handler)
+    if body is None or "plan" not in body:
+        _json_response(
+            handler,
+            {"status": "error", "message": "Request body must include 'plan' (list of entities)"},
+            status=400,
+        )
+        _log("POST", "/train", 400)
+        return
+
+    plan = body["plan"]
+    if not isinstance(plan, list):
+        _json_response(
+            handler,
+            {"status": "error", "message": "'plan' must be a JSON array"},
+            status=400,
+        )
+        _log("POST", "/train", 400)
+        return
+
+    result = bridge.train(plan)
+    status_code = 200 if result.get("trained") else 202
+    _json_response(handler, result, status=status_code)
+    _log("POST", "/train", status_code)
+
+
+def _handle_cortex_query(handler: BaseHTTPRequestHandler) -> None:
+    """POST /cortex_query — augment SQLite results with cortex scores."""
+    bridge = _get_bridge()
+    if bridge is None:
+        _json_response(
+            handler,
+            {"status": "error", "message": "LCN bridge not available (import failed)"},
+            status=503,
+        )
+        _log("POST", "/cortex_query", 503)
+        return
+
+    body = _read_body(handler)
+    if body is None or "results" not in body or "query" not in body:
+        _json_response(
+            handler,
+            {
+                "status": "error",
+                "message": "Request body must include 'results' (list) and 'query' (str)",
+            },
+            status=400,
+        )
+        _log("POST", "/cortex_query", 400)
+        return
+
+    results = body["results"]
+    query_text = body["query"]
+    if not isinstance(results, list) or not isinstance(query_text, str):
+        _json_response(
+            handler,
+            {"status": "error", "message": "'results' must be a list, 'query' must be a string"},
+            status=400,
+        )
+        _log("POST", "/cortex_query", 400)
+        return
+
+    augmented = bridge.cortex_query(results, query_text)
+    _json_response(handler, {"results": augmented, "count": len(augmented)})
+    _log("POST", "/cortex_query", 200)
+
+
+def _handle_cortex_status(handler: BaseHTTPRequestHandler) -> None:
+    """GET /cortex_status — health check for the cortex bridge."""
+    bridge = _get_bridge()
+    if bridge is None:
+        _json_response(
+            handler,
+            {"bridge_loaded": False, "reason": "LCN bridge import failed"},
+            status=200,
+        )
+        _log("GET", "/cortex_status", 200)
+        return
+
+    status_data = bridge.status()
+    _json_response(handler, status_data)
+    _log("GET", "/cortex_status", 200)
+
+
+# ---------------------------------------------------------------------------
 # HTTP Request Handler
 # ---------------------------------------------------------------------------
 
@@ -261,6 +386,8 @@ class LCNRequestHandler(BaseHTTPRequestHandler):
             _handle_health(self)
         elif self.path == "/stats":
             _handle_stats(self)
+        elif self.path == "/cortex_status":
+            _handle_cortex_status(self)
         else:
             self._respond({"status": "error", "message": "Not found"}, status=404)
 
@@ -269,6 +396,10 @@ class LCNRequestHandler(BaseHTTPRequestHandler):
             _handle_query(self)
         elif self.path == "/write":
             _handle_write(self)
+        elif self.path == "/train":
+            _handle_train(self)
+        elif self.path == "/cortex_query":
+            _handle_cortex_query(self)
         else:
             self._respond({"status": "error", "message": "Not found"}, status=404)
 
