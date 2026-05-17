@@ -382,33 +382,31 @@ class MainWindow(QMainWindow):
             return
 
         self.worker.session_id = session_id
-        self.chat_display.append("<i>Loading session history…</i>")
-        self._session_load_worker = ServiceWorker(
-            OpenCodeService.get_session_messages, session_id, limit=100
-        )
-        self._session_load_worker.result_ready.connect(self._on_session_messages_loaded)
-        self._session_load_worker.error_occurred.connect(self._on_session_load_error)
-        self._session_load_worker.start()
+        self.chat_display.append("<i>Loading session history...</i>")
+        full_text = OpenCodeService.get_session_messages(session_id, limit=100)
+        self._on_session_messages_loaded(full_text)
 
     def _on_session_messages_loaded(self, full_text):
         import markdown
 
-        if not full_text.strip():
-            self.chat_display.append(
-                f"<i>No history found for this session.</i>"
-            )
+        if not full_text or not full_text.strip():
+            self.chat_display.append("<i>No history found for this session.</i>")
             self.chat_display.append("<hr><i>[Ready - continuing session]</i><hr>")
             return
-            html_parts = []
-            for i, part in enumerate(parts):
-                html_content = markdown.markdown(part, extensions=["fenced_code", "codehilite"])
-                html_parts.append(
-                    f'<div style="margin-top:10px;margin-bottom:10px;background:#252526;'
-                    f'padding:10px;border-radius:5px;">'
-                    f'<span style="color:#569CD6;font-weight:bold;">[Part {i + 1}]:</span><br>'
-                    f"{html_content}</div>"
-                )
-            self.chat_display.append("".join(html_parts))
+
+        if len(full_text) > 40000:
+            full_text = full_text[-40000:]
+        parts = [p.strip() for p in full_text.split("\n") if p.strip()]
+        html_parts = []
+        for i, part in enumerate(parts):
+            html_content = markdown.markdown(part, extensions=["fenced_code", "codehilite"])
+            html_parts.append(
+                f'<div style="margin-top:10px;margin-bottom:10px;background:#252526;'
+                f'padding:10px;border-radius:5px;">'
+                f'<span style="color:#569CD6;font-weight:bold;">[Part {i + 1}]:</span><br>'
+                f"{html_content}</div>"
+            )
+        self.chat_display.append("".join(html_parts))
         self.chat_display.append("<hr><i>[Ready - continuing session]</i><hr>")
 
     def _on_session_load_error(self, error_msg):
