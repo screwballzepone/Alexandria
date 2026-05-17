@@ -71,7 +71,6 @@ class MainWindow(QMainWindow):
         # 3. Setup Backend Worker (OpenCode process)
         self.worker = OpenCodeWorker()
         self.worker.text_received.connect(self.handle_text)
-        self.worker.thinking_received.connect(self.handle_thinking)
         self.worker.tool_started.connect(self.handle_tool_start)
         self.worker.tool_finished.connect(self.handle_tool_finish)
         self.worker.error_received.connect(self.handle_error)
@@ -1080,21 +1079,6 @@ class MainWindow(QMainWindow):
         )
 
     @Slot(str)
-    def handle_thinking(self, text):
-        import markdown
-
-        self.chat_display.moveCursor(QTextCursor.End)
-        html = markdown.markdown(text, extensions=["fenced_code", "codehilite"])
-        formatted = (
-            '<details open>'
-            '<summary style="color:#888;font-style:italic;cursor:pointer;">Thinking...</summary>'
-            '<div style="margin:5px 0 5px 15px;padding:8px;background:#1a1a2e;'
-            'border-left:3px solid #4a4a6a;border-radius:3px;color:#aaa;font-size:12px;">'
-            f"{html}</div>"
-            "</details>"
-        )
-        self.chat_display.append(formatted)
-
     @Slot(str, str)
     def handle_tool_start(self, tool_name, details):
         self.chat_display.moveCursor(QTextCursor.End)
