@@ -287,7 +287,11 @@
     {
       "id": "Phase J",
       "name": "Self-Improvement Loop",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
+      "completed": "2026-05-17",
+      "pipeline_lines": "679-734",
+      "goal": "JANUS gets measurably better at running JANUS over time. Meta-agent proposes prompt/routing changes in structured JSON. self_improve.py validates, applies with git rollback, reverts on degradation.",
+      "mvp_scope": "self_improve.py (validate/apply/rollback) + meta-agent JSON proposals + orchestrator integration. Deferred: convention extraction, A/B harness, quality_metrics.py (consolidated into orchestrator SELF-SCORE).",
       "pipeline_lines": "679-734",
       "goal": "JANUS gets measurably better at running JANUS over time. Meta-agent A/B tests prompt/routing changes, auto-applies if improvement exceeds threshold.",
       "estimated_time": "1-2 sessions build + continuous operation",
@@ -326,14 +330,14 @@
   "summary": {
     "total_phases": 10,
     "status_counts": {
-      "DONE": 9,
+      "DONE": 10,
       "NOT_STARTED": 0,
-      "IN_PROGRESS": 1,
+      "IN_PROGRESS": 0,
       "PARTIALLY_COMPLETE": 0,
       "PARTIALLY_READY": 0,
       "BLOCKED": 0
     },
-    "progress_pct": 96,
+    "progress_pct": 100,
     "immediate_next_action": "Phase J MVP deployed — self_improve.py operational. Deferred: A/B harness, drift detection, convention extraction.",
     "parallel_opportunity": "Phase J (self-improvement) needs ~20 Enterprise missions for data — Phase G will generate those missions. H/I remain blocked on external spec.",
     "critical_path": "Phase G → Phase J (self-improvement loops on data from G). H/I remain blocked on external spec.",
