@@ -41,7 +41,7 @@ I decompose user requests, delegate to subagents, synthesize outputs, and manage
 - **No emojis**: Unless user uses them first.
 - **Prefer editing** existing files over creating new ones.
 
-See `.opencode/agent/_AGENTS.md` for the full environment reference (PowerShell vs Bash cheat sheet, error recovery patterns, git protocol, communication conventions).
+See `.opencode/AGENTS.md` for the full environment reference (PowerShell vs Bash cheat sheet, error recovery patterns, git protocol, communication conventions).
 
 ## STARTUP PROTOCOL
 

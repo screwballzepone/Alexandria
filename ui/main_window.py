@@ -92,10 +92,10 @@ class MainWindow(QMainWindow):
         self.toolbar.setMovable(False)
         self.addToolBar(Qt.TopToolBarArea, self.toolbar)
 
-        self.model_btn = QPushButton("Default Model (Auto)")
+        self.model_btn = QPushButton("Model")
         self.model_btn.setToolTip("Select model - grouped by provider")
         self.model_btn.setStyleSheet(
-            "QPushButton { text-align: left; padding: 3px 8px; min-width: 160px; }"
+            "QPushButton { text-align: left; padding: 3px 6px; min-width: 70px; }"
         )
         self.model_btn.clicked.connect(self._show_model_menu)
         self._selected_model = "Default Model (Auto)"
@@ -120,9 +120,6 @@ class MainWindow(QMainWindow):
         actions = [
             ("Providers", "Manage AI providers", self.run_providers),
             ("Agents", "Manage agents", self.run_agents),
-            ("Sessions", "Manage sessions", self.run_sessions),
-            ("MCP", "Manage MCP servers", self.run_mcp),
-            ("GitHub", "Manage GitHub integration", self.run_github),
             ("Stats", "Show token usage", self.run_stats),
         ]
         for text, tooltip, slot in actions:
@@ -131,19 +128,9 @@ class MainWindow(QMainWindow):
             action.triggered.connect(slot)
             self.toolbar.addAction(action)
 
-        # Extended action buttons
-        extra_actions = [
-            ("New Session", "Start a fresh session", self.new_session),
-            ("↻ Sessions", "Refresh sessions list", self.refresh_sessions),
-            ("↩ Undo", "Undo last change (/undo)", self.run_undo),
-            ("↪ Redo", "Redo last undone change (/redo)", self.run_redo),
-            ("↻ Models", "Refresh model list", self.refresh_models),
-        ]
-        for text, tooltip, slot in extra_actions:
-            action = QAction(text, self)
-            action.setToolTip(tooltip)
-            action.triggered.connect(slot)
-            self.toolbar.addAction(action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(QAction("New Session", self, triggered=self.new_session))
+        self.toolbar.addAction(QAction("↻", self, triggered=self.refresh_sessions, toolTip="Refresh"))
 
     # -----------------------------------------------------------------------
     # Sidebar
