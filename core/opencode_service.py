@@ -120,14 +120,20 @@ class OpenCodeService:
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT p.text FROM message m"
+                "SELECT p.data FROM message m"
                 " JOIN part p ON m.id = p.message_id"
-                " WHERE m.session_id = ? AND p.text IS NOT NULL"
+                " WHERE m.session_id = ? AND json_extract(p.data, '$.text') IS NOT NULL"
                 " ORDER BY m.time_created ASC LIMIT ?",
                 (session_id, limit_int),
             )
             rows = cursor.fetchall()
             conn.close()
-            return "\n".join([row[0] for row in rows if row[0]])
+            texts = []
+            for row in rows:
+                import json
+                data = json.loads(row[0])
+                if data.get("type") == "text" and data.get("text"):
+                    texts.append(data["text"])
+            return "\n".join(texts)
         except sqlite3.Error:
             return ""

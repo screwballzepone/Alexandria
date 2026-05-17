@@ -393,12 +393,12 @@ class MainWindow(QMainWindow):
     def _on_session_messages_loaded(self, full_text):
         import markdown
 
-        if len(full_text) > 40000:
-            full_text = full_text[-40000:]
-        parts = [p.strip() for p in full_text.split("\n") if p.strip()]
-        if not parts:
-            self.chat_display.append("<i>No history found for this session.</i>")
-        else:
+        if not full_text.strip():
+            self.chat_display.append(
+                f"<i>No history found for this session.</i>"
+            )
+            self.chat_display.append("<hr><i>[Ready - continuing session]</i><hr>")
+            return
             html_parts = []
             for i, part in enumerate(parts):
                 html_content = markdown.markdown(part, extensions=["fenced_code", "codehilite"])
@@ -539,7 +539,9 @@ class MainWindow(QMainWindow):
         for cmd in sorted(builtins):
             action = menu.addAction(cmd)
             action.triggered.connect(lambda checked=False, c=cmd: self._insert_slash_command(c))
-        menu.exec(self.input_field.mapToGlobal(self.input_field.rect().topLeft()))
+        point = self.input_field.mapToGlobal(self.input_field.rect().bottomLeft())
+        point.setY(point.y() - menu.sizeHint().height() - 5)
+        menu.popup(point)
 
     def _insert_slash_command(self, cmd):
         self.input_field.setPlainText(cmd)
