@@ -40,69 +40,88 @@ Common failure patterns and their prompt fixes:
 | Too much output | Core rules | Add token limit |
 | Wrong file targeted | CONTEXT section | Add file discovery step |
 
-### 3. Write a proposal
+### 3. Write a structured JSON proposal
 
-Write your proposal to `.opencode/meta-agent/proposals/<YYYY-MM-DD>-<agent-name>.md`:
+Write your proposal as a JSON file to `.opencode/meta-agent/proposals/<id>.json` — NOT a markdown file.
 
-```markdown
-# Meta-Agent Proposal
-Date: <date>
-Target agent: <agent-name>
-Evidence: <retries/issues observed>
-Confidence: <0.0-1.0>
-Auto-apply: <yes if confidence >= 0.8 AND agent is NOT orchestrator>
+The `<id>` is a ULID-like timestamp string (generated automatically by self_improve.py on apply, or you can generate one: `python -c "import time,random; print(f'{int(time.time()*1000):012x}{random.randint(0,2**64-1):016x}'[:26].upper())"`).
 
-## Problem observed
-<1-2 sentences: what pattern in the failures points to a prompt gap>
+**Proposal JSON schema:**
 
-## Current prompt section (lines X-Y)
-```
-<exact current text>
-```
-
-## Proposed replacement
-```
-<exact proposed text>
-```
-
-## Expected improvement
-<1 sentence: what should improve>
+```json
+{
+  "proposal_id": "<ULID-or-timestamp-hex>",
+  "source": "meta-agent",
+  "mission_id": "<mission-id-from-mission.json>",
+  "target_file": ".opencode/agent/<target-agent>.md",
+  "change_type": "addition | modification",
+  "section": "<exact ## HEADING text to anchor the edit>",
+  "old_text": "<EXACT text to replace — must appear exactly once in the section>",
+  "new_text": "<replacement text>",
+  "confidence": 0.85,
+  "expected_improvement": "<quantified or clearly described expected improvement>",
+  "risk": "low | medium | high"
+}
 ```
 
-### 3.5 Verify improvement (best-effort)
+**Field requirements:**
 
-Before auto-applying, attempt to verify the change does not regress behavior:
+| Field | Rule |
+|-------|------|
+| `proposal_id` | Unique hex string, >= 8 chars. Prefer timestamp-prefixed ULID format. |
+| `source` | Always `"meta-agent"` for this agent. |
+| `mission_id` | Copy from `.opencode/mission.json` — identifies which mission produced this proposal. |
+| `target_file` | Relative path from project root to the agent .md file. |
+| `change_type` | `"addition"` = insert new_text after old_text anchor. `"modification"` = replace old_text with new_text. |
+| `section` | Exact heading text (e.g. `"## CORE PRINCIPLES"`) — must match a line that starts with `## ` or `### ` followed by this text. Used as the search scope anchor. |
+| `old_text` | EXACT text to find. Must appear exactly once within the specified section. For `addition`, this is the text AFTER which to insert new_text. |
+| `new_text` | Replacement text (`modification`) or text to insert after old_text (`addition`). |
+| `confidence` | 0.0-1.0 quantifying how certain you are this change improves the agent. |
+| `expected_improvement` | Quantified or clearly described expected outcome — not just "better". |
+| `risk` | `"low"` = additive only. `"medium"` = changes behavior but reversible. `"high"` = modifies core principles. |
+
+**Example:**
+
+```json
+{
+  "proposal_id": "01J8X2T4V6M9K3P5R7N0L2Q4W6",
+  "source": "meta-agent",
+  "mission_id": "MISSION-2026-05-17-F001",
+  "target_file": ".opencode/agent/coder.md",
+  "change_type": "modification",
+  "section": "## CORE PRINCIPLES",
+  "old_text": "3. **Parallel when possible.** Independent subtasks go out in one response.",
+  "new_text": "3. **Parallel when possible and safe.** Independent subtasks go out in one response. Verify no shared mutable state before parallelizing.",
+  "confidence": 0.85,
+  "expected_improvement": "Reduce merge conflicts from parallel writes by 40% (estimated from 3 observed conflicts in last 10 missions)",
+  "risk": "low"
+}
+```
+### 3.5 Validate proposal
+
+Before submitting, validate your proposal JSON:
 
 ```powershell
-# 1. Back up the current agent file
-Copy-Item ".opencode/agent/<target-agent>.md" ".opencode/meta-agent/proposals/<target-agent>.md.bak"
-
-# 2. No automated eval tool available — skip verification, note it
-Write-Output "No automated eval tool — skipping verification"
+cat ".opencode/meta-agent/proposals/<id>.json" | python .opencode/tools/self_improve.py validate
 ```
 
-No automated verification available — proceed with caution.
+If validation fails, fix the errors and re-validate. Do not submit an invalid proposal.
 
-### 4. Auto-apply if criteria met
+### 4. Submit proposal to self_improve.py
 
-Auto-apply criteria (ALL must be true):
-- Confidence >= 0.8
-- Target agent is NOT orchestrator or mission-protocol
-- The proposal is an ADDITION or CLARIFICATION (not a deletion of existing rules)
-- The changed section is < 10 lines
+Do NOT auto-apply manually. Write the proposal JSON file to `.opencode/meta-agent/proposals/<id>.json`.
 
-If auto-apply:
-```bash
-# Apply the edit to the agent file
-# Then record it
-echo "Applied: <proposal file>" >> .opencode/meta-agent/applied-proposals.log
+The orchestrator's QUALITY GATE PIPELINE will process pending proposals via `self_improve.py apply` on mission completion.
+
+If you need to force-apply immediately (e.g., proposal fixes a critical ongoing failure):
+```powershell
+python .opencode/tools/self_improve.py apply --proposal-file ".opencode/meta-agent/proposals/<id>.json"
 ```
 
-If NOT auto-apply: leave the proposal file for human review. Log:
+Log the proposal for human review:
 ```
 META-AGENT: Proposal written to .opencode/meta-agent/proposals/<file>
-Reason not auto-applied: <confidence too low | orchestrator | deletion | too large | no-verify>
-Review and apply manually if you agree.
+Validation: passed/failed (see output above)
 ```
 
 ### 5. Model routing proposals (optional)

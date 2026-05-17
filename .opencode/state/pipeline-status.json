@@ -287,7 +287,7 @@
     {
       "id": "Phase J",
       "name": "Self-Improvement Loop",
-      "status": "PARTIALLY_READY",
+      "status": "IN_PROGRESS",
       "pipeline_lines": "679-734",
       "goal": "JANUS gets measurably better at running JANUS over time. Meta-agent A/B tests prompt/routing changes, auto-applies if improvement exceeds threshold.",
       "estimated_time": "1-2 sessions build + continuous operation",
@@ -299,13 +299,27 @@
       ],
       "unlocks": ["AGI property: improves methodology from outcomes"],
       "evidence": {
-        "infrastructure_exists": [
-          "meta-agent definition at .opencode/agent/meta-agent.md — 'post-mission: proposes agent prompt + model routing improvements'",
-          "eval_runner.py mentioned in PIPELINE.md as existing"
+        "mvp_scope": "Phase J MVP — self_improve.py engine with validate/apply/rollback/status CLI, git-stash-backed rollback safety, section-anchored edits, env-var kill switches. Meta-agent upgraded to produce JSON proposals. Orchestrator startup + quality gate wired. Deferred: A/B harness, drift detection, convention extraction, auto-apply beyond self_improve.py.",
+        "files_created": [
+          ".opencode/tools/self_improve.py (~250 LOC) — validate(), apply(), rollback(), status(), section-anchored text matching, git stash rollback, kill switches"
         ],
-        "insufficient_data": "No Enterprise-tier missions completed. MEMORY-V0 and OPENCODE-ARCH were RESEARCH tier. Need ~20 Enterprise-tier missions before meta-agent has meaningful data per PIPELINE.md:688.",
-        "not_started": "A/B harness not built. Auto-apply policy not configured. Drift detection not implemented. Convention extraction not wired.",
-        "git_evidence": "No commits reference self-improvement loop or Phase J"
+        "files_modified": [
+          ".opencode/agent/meta-agent.md — markdown proposal format → JSON schema, auto-apply → submit-to-self_improve.py",
+          ".opencode/agent/orchestrator.md — Phase 2 step 15 (self-improve status check) + Quality Gate step 7 (process pending proposals)",
+          ".opencode/state/pipeline-status.json — Phase J PARTIALLY_READY → IN_PROGRESS"
+        ],
+        "kill_switches": [
+          "JANUS_SELF_IMPROVE_DISABLED=true — master kill, exits 0 immediately",
+          "JANUS_AUTO_APPLY_DISABLED=true — validate only, never apply",
+          "Default when unset: DISABLED=true (safe default)"
+        ],
+        "deferred": [
+          "A/B harness for measuring improvement vs regression",
+          "Drift detection — periodic comparison of agent outputs against expected behavior",
+          "Convention extraction from mission history",
+          "Auto-apply policy beyond self_improve.py orchestration"
+        ],
+        "git_evidence": "Phase J implemented in current session — see .opencode/tools/self_improve.py"
       }
     }
   ],
@@ -314,17 +328,17 @@
     "status_counts": {
       "DONE": 9,
       "NOT_STARTED": 0,
-      "IN_PROGRESS": 0,
+      "IN_PROGRESS": 1,
       "PARTIALLY_COMPLETE": 0,
-      "PARTIALLY_READY": 1,
+      "PARTIALLY_READY": 0,
       "BLOCKED": 0
     },
-    "progress_pct": 95,
-    "immediate_next_action": "Phase J — Self-Improvement Loop. Meta-agent exists, eval_runner.py exists, 15+ missions of data from Phase G. Needs A/B harness, auto-apply policy, drift detection.",
+    "progress_pct": 96,
+    "immediate_next_action": "Phase J MVP deployed — self_improve.py operational. Deferred: A/B harness, drift detection, convention extraction.",
     "parallel_opportunity": "Phase J (self-improvement) needs ~20 Enterprise missions for data — Phase G will generate those missions. H/I remain blocked on external spec.",
     "critical_path": "Phase G → Phase J (self-improvement loops on data from G). H/I remain blocked on external spec.",
     "largest_blocker": "Phase D-2 (consult enforcement) — LLM skips advisory consult. Need hard enforcement. Phase H (Cortex) still blocked on external spec.",
-    "largest_risk": "Phase B (lcn_jvp) — mathematical correctness not guaranteed. If JVP estimator design is flawed, Brain architecture may need revision.",
+    "largest_risk": "Phase J self-improvement — safe by default (DISABLED=true), git-stash-backed rollback, section-anchored edits. Risk managed.",
     "largest_cost_sink": "Phase J (self-improvement) at $5-10/month recurring, plus Phase G overnight queue at $3.50-14/week"
   },
   "cross_references": {

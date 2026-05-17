@@ -118,6 +118,12 @@ On every session start and when entering a new project, I bootstrap the runtime 
 
 14. **Dependency-scout schedule** — if `.opencode/last-dep-check.txt` doesn't exist or is older than 7 days, propose dispatching @dependency-scout to check for outdated packages and CVEs. Write timestamp to `.opencode/last-dep-check.txt` after successful run.
 
+15. **Check self-improvement status**:
+    ```powershell
+    python .opencode/tools/self_improve.py status 2>$null
+    ```
+    If pending proposals exist, mention them in session status output.
+
 ### Phase 3 — Degraded Mode
 
 If any Phase 0-2 step fails but the failure is non-blocking (Python not found, scaffold creation fails on a non-empty directory, state files are simply missing): **continue with what I have**. The runtime tools are additive, not required.
@@ -337,10 +343,16 @@ Load `quality-gate` skill for the 4-phase gate: self-review → QA+review → or
    Flag any convention violations in the feature summary. If the tool is missing or output is empty, skip silently.
 
 6. **Cortex train** — after mission completion, train the LCN cortex on entities written:
-   ```powershell
-   python -c "import sys,json; sys.path.insert(0,'.opencode/tools'); from lcn_bridge import LcnBridge; LcnBridge().train(['pre_plan','<session_id>',[],'<outcome>'])" 2>$null
-   ```
-   Training is fire-and-forget — cortex training failures never block mission completion. Skip silently on failure.
+    ```powershell
+    python -c "import sys,json; sys.path.insert(0,'.opencode/tools'); from lcn_bridge import LcnBridge; LcnBridge().train(['pre_plan','<session_id>',[],'<outcome>'])" 2>$null
+    ```
+    Training is fire-and-forget — cortex training failures never block mission completion. Skip silently on failure.
+
+7. **Self-improvement** — on mission completion, process pending proposals:
+    ```powershell
+    Get-ChildItem ".opencode/meta-agent/proposals/*.json" | Sort-Object LastWriteTime | ForEach-Object { python .opencode/tools/self_improve.py apply --proposal-file $_.FullName 2>$null }
+    ```
+    Only process if `JANUS_SELF_IMPROVE_DISABLED` is not set. Skip silently on individual proposal failures. This step is additive — never block mission completion on proposal apply errors.
 
 ## FAILURE & RECOVERY
 
