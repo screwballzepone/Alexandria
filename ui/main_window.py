@@ -531,17 +531,15 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QMenu
 
         menu = QMenu(self)
+        builtins = {"/plan", "/status", "/undo", "/redo", "/share", "/init"}
         cmd_dir = Path(".opencode/commands")
         if cmd_dir.exists():
             for f in sorted(cmd_dir.glob("*.md")):
-                cmd = f"/{f.stem}"
-                action = menu.addAction(cmd)
-                action.triggered.connect(lambda checked=False, c=cmd: self._insert_slash_command(c))
-        else:
-            for c in ["/undo", "/redo", "/lint", "/review"]:
-                action = menu.addAction(c)
-                action.triggered.connect(lambda checked=False, cc=c: self._insert_slash_command(cc))
-        menu.exec(self.input_field.mapToGlobal(self.input_field.rect().bottomLeft()))
+                builtins.add(f"/{f.stem}")
+        for cmd in sorted(builtins):
+            action = menu.addAction(cmd)
+            action.triggered.connect(lambda checked=False, c=cmd: self._insert_slash_command(c))
+        menu.exec(self.input_field.mapToGlobal(self.input_field.rect().topLeft()))
 
     def _insert_slash_command(self, cmd):
         self.input_field.setPlainText(cmd)
