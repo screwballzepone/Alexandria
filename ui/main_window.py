@@ -4,6 +4,7 @@ from PySide6.QtCore import QSize, Qt, QTimer, Slot
 from PySide6.QtGui import QAction, QColor, QStandardItem, QStandardItemModel, QTextCursor
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFileSystemModel,
     QHBoxLayout,
     QLabel,
@@ -430,64 +431,29 @@ class MainWindow(QMainWindow):
         self.chat_display.setOpenExternalLinks(True)
         self.right_layout.addWidget(self.chat_display)
 
-        # Agent pills row - above the input field
+        # Agent selector — dropdown instead of horizontal pills
         self._selected_agent = "orchestrator"
-        self._agent_pill_buttons = {}
 
         agent_bar = QHBoxLayout()
         from PySide6.QtWidgets import QLabel as _QL
 
         agent_bar.addWidget(_QL("Agent:"))
+        self.agent_combo = QComboBox()
+        self.agent_combo.setMinimumWidth(140)
+        self.agent_combo.setStyleSheet(
+            "QComboBox { padding: 2px 6px; font-size: 11px; }"
+        )
 
         pills_agents = OpenCodeService.get_agents_from_files()
         if not pills_agents:
             pills_agents = ["orchestrator"]
+        for a in pills_agents:
+            self.agent_combo.addItem(a)
+        self.agent_combo.setCurrentText("orchestrator")
+        self.agent_combo.currentTextChanged.connect(self._select_agent_pill)
+        agent_bar.addWidget(self.agent_combo)
 
-        # Orchestrator - squared primary button, always first and visually distinct
-        if "orchestrator" in pills_agents:
-            orc_btn = QPushButton("⚙ orchestrator")
-            orc_btn.setCheckable(True)
-            orc_btn.setAutoExclusive(True)
-            orc_btn.setChecked(True)
-            orc_btn.clicked.connect(lambda checked: self._select_agent_pill("orchestrator"))
-            orc_btn.setStyleSheet(
-                "QPushButton { border: 2px solid #555; border-radius: 4px; "
-                "padding: 2px 12px; font-size: 11px; font-weight: bold; "
-                "background: #2d2d2d; color: #ccc; min-width: 100px; }"
-                "QPushButton:checked { background: #0e639c; color: white; border-color: #1177bb; "
-                "border-left: 3px solid #4ec9b0; }"
-                "QPushButton:hover { background: #3a3a3a; }"
-            )
-            self._agent_pill_buttons["orchestrator"] = orc_btn
-            agent_bar.addWidget(orc_btn)
-
-            # Vertical separator between orchestrator and subagents
-            from PySide6.QtWidgets import QFrame
-            sep = QFrame()
-            sep.setFrameShape(QFrame.VLine)
-            sep.setStyleSheet("color: #444; margin: 2px 4px;")
-            agent_bar.addWidget(sep)
-
-        # Subagent pills - rounded, lighter weight
-        for agent_name in pills_agents:
-            if agent_name == "orchestrator":
-                continue
-            btn = QPushButton(agent_name)
-            btn.setCheckable(True)
-            btn.setAutoExclusive(True)
-            btn.clicked.connect(lambda checked, a=agent_name: self._select_agent_pill(a))
-            btn.setStyleSheet(
-                "QPushButton { border: 1px solid #444; border-radius: 10px; "
-                "padding: 2px 10px; font-size: 11px; background: #2d2d2d; color: #999; }"
-                "QPushButton:checked { background: #0e639c; color: white; border-color: #1177bb; }"
-                "QPushButton:hover { background: #3a3a3a; color: #ccc; }"
-            )
-            self._agent_pill_buttons[agent_name] = btn
-            agent_bar.addWidget(btn)
-
-        agent_bar.addStretch()
-
-        # Mission button lives in the agent bar - small, right-aligned
+        # Mission button — right-aligned in agent bar
         self.mission_btn = QPushButton("🚀 Mission")
         self.mission_btn.setToolTip(
             "Start a PROJECT-tier autonomous mission.\n"
@@ -588,10 +554,9 @@ class MainWindow(QMainWindow):
             if flash:
                 self._selected_model = flash
                 self.model_btn.setText(flash.split("/")[-1])
-            # Switch agent pill to nano-coder
-            if "nano-coder" in self._agent_pill_buttons:
-                self._agent_pill_buttons["nano-coder"].setChecked(True)
-                self._selected_agent = "nano-coder"
+            # Switch agent to nano-coder
+            self.agent_combo.setCurrentText("nano-coder")
+            self._selected_agent = "nano-coder"
             self.statusBar().showMessage("Low Token Mode Enabled", 3000)
 
     @Slot()
