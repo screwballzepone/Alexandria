@@ -72,13 +72,14 @@ class AgentMemory:
         Tags and a current timestamp are also stored.
 
         Retries up to 3 times with exponential backoff on lock errors.
+        Reuses the same connection across retries so busy_timeout is not reset.
 
         Returns True on success, False on database error.
         """
+        conn = sqlite3.connect(str(self.db_path))
+        conn.execute("PRAGMA busy_timeout=5000")
         for attempt in range(3):
-            conn = None
             try:
-                conn = sqlite3.connect(str(self.db_path))
                 cursor = conn.cursor()
                 cursor.execute(
                     "SELECT id FROM project_memory WHERE workspace_path=? AND key=?",
@@ -100,12 +101,8 @@ class AgentMemory:
                 conn.commit()
                 return True
             except sqlite3.OperationalError as e:
-                if conn:
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
                 if attempt == 2:
+                    conn.close()
                     self._log_error("db_error", f"AgentMemory.store() failed after 3 retries: {e}")
                     return False
                 time.sleep(0.1 * (2 ** attempt))

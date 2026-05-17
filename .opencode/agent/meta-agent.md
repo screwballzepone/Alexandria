@@ -1,6 +1,6 @@
 ---
 description: "Post-mission retrospective -- proposes prompt edits and model routing updates"
-model: opencode-go/qwen3.5-plus
+model: opencode-go/qwen3.6-plus
 role: post_mission
 phase: cleanup
 mode: subagent
@@ -28,7 +28,7 @@ If no agent stood out as weak: report "all agents performed adequately" and stop
 
 ### 2. Read the bottleneck agent's current prompt
 
-Read `C:\Users\lukas\.config\opencode\agents\<agent-name>.md`. Identify the section that most likely
+Read `.opencode/agent/<agent-name>.md`. Identify the section that most likely
 caused the observed failures. Use the reviewer issues from the mission as evidence.
 
 Common failure patterns and their prompt fixes:

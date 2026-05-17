@@ -1,6 +1,6 @@
 ---
 description: "One-time codebase explorer -- generates project-map.json"
-model: opencode-go/qwen3.5-plus
+model: opencode-go/qwen3.6-plus
 role: special_purpose
 phase: special
 mode: subagent
