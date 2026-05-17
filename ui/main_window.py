@@ -262,6 +262,13 @@ class MainWindow(QMainWindow):
 
         self.toolbar.addSeparator()
 
+        # Mission status indicator
+        self.mission_indicator = QLabel("Mission: —")
+        self.mission_indicator.setStyleSheet("color: #888; font-size: 11px; padding: 0 6px;")
+        self.mission_indicator.setToolTip("Click to view mission status")
+        self.mission_indicator.mousePressEvent = lambda e: self._show_mission_dialog()
+        self.toolbar.addWidget(self.mission_indicator)
+
         # 5. ⋮ More overflow menu button
         self.more_btn = QPushButton("⋮ More")
         self.more_btn.setToolTip("Additional actions")
@@ -621,8 +628,9 @@ class MainWindow(QMainWindow):
         theme_row = QHBoxLayout()
         theme_row.addWidget(QLabel("Theme:"))
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["Dark", "Light", "System"])
+        self.theme_combo.addItems(["Dark", "Light"])
         self.theme_combo.setCurrentText("Dark")
+        self.theme_combo.currentTextChanged.connect(self._apply_theme)
         theme_row.addWidget(self.theme_combo)
         theme_row.addStretch()
         settings_layout.addLayout(theme_row)
@@ -634,9 +642,7 @@ class MainWindow(QMainWindow):
         self.font_slider.setValue(14)
         self.font_slider.setFixedWidth(120)
         self.font_label = QLabel("14px")
-        self.font_slider.valueChanged.connect(
-            lambda v: self.font_label.setText(f"{v}px")
-        )
+        self.font_slider.valueChanged.connect(self._on_font_changed)
         font_row.addWidget(self.font_slider)
         font_row.addWidget(self.font_label)
         font_row.addStretch()
@@ -691,6 +697,33 @@ class MainWindow(QMainWindow):
 
         settings_layout.addStretch()
         self.sidebar_tabs.addTab(settings_widget, "Settings")
+
+    def _apply_theme(self, theme):
+        from pathlib import Path
+
+        from PySide6.QtWidgets import QApplication
+
+        if theme == "Light":
+            QApplication.instance().setStyleSheet(
+                "QMainWindow{background:#f0f0f0;color:#1a1a1a}"
+                "QTextEdit,QTextBrowser,QListWidget,QTreeView{background:#fff;color:#1a1a1a;border:1px solid #ccc}"
+                "QToolBar{background:#e8e8e8;border-bottom:1px solid #ccc}"
+                "QPushButton{background:#e0e0e0;color:#1a1a1a;border:1px solid #bbb;padding:3px 8px}"
+                "QPushButton:hover{background:#d0d0d0}"
+                "QTabBar::tab{background:#e0e0e0;color:#1a1a1a;padding:4px 12px}"
+                "QTabBar::tab:selected{background:#fff}"
+                "QLabel{color:#1a1a1a}"
+                "QComboBox{background:#fff;color:#1a1a1a}"
+                "QMenuBar{background:#e8e8e8;color:#1a1a1a}"
+            )
+        else:
+            qss = Path(__file__).parent.parent / "assets" / "style.qss"
+            if qss.exists():
+                QApplication.instance().setStyleSheet(qss.read_text())
+
+    def _on_font_changed(self, size):
+        self.font_label.setText(f"{size}px")
+        self.setStyleSheet(f"* {{ font-size: {size}px; }}")
 
     def add_manual_memory(self):
         from PySide6.QtWidgets import QInputDialog
@@ -1563,6 +1596,14 @@ class MainWindow(QMainWindow):
 
         self.mission_resume_btn.setEnabled(status == "in_progress")
         self.mission_clear_btn.setEnabled(True)
+
+        # Update toolbar indicator
+        mission_title = mission.get("title", "No mission")[:30]
+        self.mission_indicator.setText(f"Mission: {status}")
+        self.mission_indicator.setStyleSheet(
+            f"color: {color}; font-size: 11px; padding: 0 6px;"
+        )
+        self.mission_indicator.setToolTip(f"{mission_title}\nStatus: {status}")
 
     def _refresh_mission_if_visible(self):
         """Refresh mission data (always in new sidebar, only when visible in legacy)."""
