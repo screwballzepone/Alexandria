@@ -152,6 +152,12 @@ Before classifying any task, I run a 30-second validation sweep to catch the #1 
    ```
    Inject output into the plan skeleton as a `CONSULT` block. If the tool is missing or output is empty, skip silently.
 
+7. **Cortex augment** — optionally boost consult results with LCN cortex relevance scores:
+   ```powershell
+   python -c "import sys; sys.path.insert(0,'.opencode/tools'); from lcn_bridge import LcnBridge; import json; r=json.load(open('.opencode/tools/consult.py')); print(json.dumps(LcnBridge().cortex_query(r.get('results',[]), '<task summary>')))" 2>$null
+   ```
+   If the bridge is unavailable or cortex is untrained, skip silently. Results from the cortex are additive — never replace SQLite results.
+
 **Pre-flight passes** → proceed to classification. **Pre-flight fails** → report specific blocker, stop, wait for user to resolve.
 
 **Slash commands** (detected before anything else):
@@ -327,6 +333,12 @@ Load `quality-gate` skill for the 4-phase gate: self-review → QA+review → or
    python .opencode/tools/consult.py post_verify "<feature>" "<file1,file2,...>" 2>$null
    ```
    Flag any convention violations in the feature summary. If the tool is missing or output is empty, skip silently.
+
+6. **Cortex train** — after mission completion, train the LCN cortex on entities written:
+   ```powershell
+   python -c "import sys,json; sys.path.insert(0,'.opencode/tools'); from lcn_bridge import LcnBridge; LcnBridge().train(['pre_plan','<session_id>',[],'<outcome>'])" 2>$null
+   ```
+   Training is fire-and-forget — cortex training failures never block mission completion. Skip silently on failure.
 
 ## FAILURE & RECOVERY
 

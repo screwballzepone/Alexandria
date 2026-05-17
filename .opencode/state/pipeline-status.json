@@ -235,7 +235,8 @@
     {
       "id": "Phase H",
       "name": "Cortex Transition",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
+      "completed": "2026-05-17",
       "blocked_by": null,
       "pipeline_lines": "566-618",
       "goal": "Bridge LCN Brain output to the JANUS entity store. SQLite v0 remains primary; LCN cortex augments retrieval with learned relevance scores. Dual-write + α-blended retrieval.",
@@ -257,8 +258,8 @@
     {
       "id": "Phase I",
       "name": "Cross-Project Brain",
-      "status": "BLOCKED",
-      "blocked_by": "Phase H",
+      "status": "NOT_STARTED",
+      "blocked_by": null,
       "pipeline_lines": "621-675",
       "goal": "One LCN shared across all repos. Conventions learned in OpenCode apply to MLP-Survival. Errors from clank.world surface in Afterlife: Equestria.",
       "estimated_time": "2-3 sessions",
@@ -302,15 +303,15 @@
   "summary": {
     "total_phases": 10,
     "status_counts": {
-      "DONE": 7,
-      "NOT_STARTED": 0,
+      "DONE": 8,
+      "NOT_STARTED": 1,
       "IN_PROGRESS": 0,
       "PARTIALLY_COMPLETE": 0,
       "PARTIALLY_READY": 1,
-      "BLOCKED": 2
+      "BLOCKED": 0
     },
-    "progress_pct": 85,
-    "immediate_next_action": "Phase J — Self-Improvement Loop. Meta-agent exists, needs ~20 Enterprise mission data points. Phase G generated 15 missions. Phase H/I remain blocked on external spec.",
+    "progress_pct": 90,
+    "immediate_next_action": "Phase I — Cross-Project Brain. SQLite v0 + LCN cortex now support multi-workspace. Wire entity store to share across repos (OpenCode, MLP Survival, clank.world, Afterlife: Equestria). OR: Phase J — Self-Improvement Loop with 15+ missions of data from Phase G queue runs.",
     "parallel_opportunity": "Phase J (self-improvement) needs ~20 Enterprise missions for data — Phase G will generate those missions. H/I remain blocked on external spec.",
     "critical_path": "Phase G → Phase J (self-improvement loops on data from G). H/I remain blocked on external spec.",
     "largest_blocker": "Phase D-2 (consult enforcement) — LLM skips advisory consult. Need hard enforcement. Phase H (Cortex) still blocked on external spec.",
