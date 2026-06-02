@@ -41,16 +41,13 @@ class OpenCodeWorker(QThread):
         """
         Enqueue a message for processing.
 
-        Args:
-            text:          The prompt text, or the slash command string (e.g. "/undo").
-            model:         Optional model override string.
-            agent:         Optional agent name override.
-            file:          Optional path to attach via --file.
-            plan_mode:     If True, prepends a "do not modify files" instruction.
-            slash_command: If True, sends text as --command <text> instead of a prompt.
-            fork:          If True, forks the current session into a new one.
-            title:         Optional title for the session (applied on first message).
+        If a previous process is still active, stop it and wait for cleanup
+        before enqueuing to prevent zombie subprocesses on rapid session switches.
         """
+        if self.process and self.process.poll() is None:
+            self.stop()
+            self.wait(5000)
+
         self._queue.put(
             {
                 "text": text,
@@ -189,12 +186,12 @@ class OpenCodeWorker(QThread):
                         if "npm" not in line.lower() and "opencode" not in line.lower():
                             pass  # Ignore random CLI noise
 
-                self.process.stdout.close()
-                self.process.wait()
-                self.process_finished.emit(self.process.returncode)
+                if self.running:
+                    self.process.stdout.close()
+                    self.process.wait()
+                    self.process_finished.emit(self.process.returncode)
 
-                # Run Stop hooks
-                hook_ctx = {"exit_code": self.process.returncode}
+                    hook_ctx = {"exit_code": self.process.returncode}
                 decisions = self.hook_runner.run("Stop", hook_ctx)
                 for d in decisions:
                     decision = d.get("decision", "allow")
@@ -216,10 +213,7 @@ class OpenCodeWorker(QThread):
 
     def stop(self):
         self.running = False
-        if self.process:
-            # On Windows, shell=True spawns a cmd.exe child — terminate() only
-            # kills the shell, not the opencode subprocess. Use taskkill to
-            # nuke the entire process tree so no orphan processes linger.
+        if self.process and self.process.poll() is None:
             try:
                 import subprocess as _sp
 
@@ -227,6 +221,12 @@ class OpenCodeWorker(QThread):
                     ["taskkill", "/F", "/T", "/PID", str(self.process.pid)],
                     stdout=_sp.DEVNULL,
                     stderr=_sp.DEVNULL,
+                    timeout=10,
                 )
+                self.process.wait(timeout=5)
             except Exception:
-                self.process.terminate()
+                try:
+                    self.process.terminate()
+                    self.process.wait(timeout=3)
+                except Exception:
+                    self.process.kill()
