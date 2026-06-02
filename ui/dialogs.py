@@ -223,3 +223,32 @@ class McpDialog(QDialog):
                 )
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to launch command:\n{e}")
+
+
+class ShortcutsDialog(QDialog):
+    SHORTCUTS = [
+        ("Chat", "Enter", "Send message"),
+        ("Chat", "Shift+Enter", "New line"),
+        ("Chat", "Ctrl+/", "Show this dialog"),
+        ("Chat", "Ctrl+P", "Toggle Plan Mode"),
+        ("Navigation", "Esc", "Clear input / close dialog"),
+        ("Tools", "/", "Slash command palette"),
+        ("Session", "Ctrl+N", "New session"),
+    ]
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Keyboard Shortcuts")
+        self.resize(400, 300)
+        layout = QVBoxLayout(self)
+        lbl = QLabel("<b>Keyboard Shortcuts</b>")
+        layout.addWidget(lbl)
+        current_cat = None
+        for cat, key, desc in self.SHORTCUTS:
+            if cat != current_cat:
+                current_cat = cat
+                layout.addWidget(QLabel(f"<br><b>{cat}</b>"))
+            layout.addWidget(QLabel(f"  <b>{key}</b> — {desc}"))
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)

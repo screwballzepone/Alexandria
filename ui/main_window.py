@@ -978,15 +978,20 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, event):
         if obj == self.input_field and event.type() == event.Type.KeyPress:
-            # Enter (without Shift) → send
             if event.key() == Qt.Key_Return and not (event.modifiers() & Qt.ShiftModifier):
                 self.send_message()
                 return True
-            # "/" typed into an empty field → show slash command palette
             if event.key() == Qt.Key_Slash and self.input_field.toPlainText().strip() == "":
                 self._show_slash_menu()
-                return False  # still insert the "/"
+                return False
+            if event.key() == Qt.Key_Slash and (event.modifiers() & Qt.ControlModifier):
+                self._show_shortcuts()
+                return True
         return super().eventFilter(obj, event)
+
+    def _show_shortcuts(self):
+        from ui.dialogs import ShortcutsDialog
+        ShortcutsDialog(self).exec()
 
     def _show_slash_menu(self):
         from pathlib import Path
