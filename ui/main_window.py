@@ -1107,9 +1107,9 @@ class MainWindow(QMainWindow):
             f"{html}</div>"
         )
         self.chat_display.append(formatted)
-        self.chat_display.verticalScrollBar().setValue(
-            self.chat_display.verticalScrollBar().maximum()
-        )
+        sb = self.chat_display.verticalScrollBar()
+        if sb.value() >= sb.maximum() - 20:
+            sb.setValue(sb.maximum())
 
     @Slot(str)
     @Slot(str, str)
