@@ -10,11 +10,12 @@ from core.hooks import HookRunner
 class OpenCodeWorker(QThread):
     # Signals for different types of output
     text_received = Signal(str)
-    tool_started = Signal(str, str)  # tool_name, details
+    tool_started = Signal(str, str)
     tool_finished = Signal(str)
     error_received = Signal(str)
     process_finished = Signal(int)
     queue_empty = Signal()
+    cost_updated = Signal(float, int, int)  # cost, tokens_in, tokens_out
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -143,6 +144,12 @@ class OpenCodeWorker(QThread):
 
                         event_type = data.get("type")
                         part = data.get("part", {})
+
+                        cost = data.get("cost")
+                        if cost is not None:
+                            tokens_in = data.get("tokens_input", 0) or 0
+                            tokens_out = data.get("tokens_output", 0) or 0
+                            self.cost_updated.emit(float(cost), int(tokens_in), int(tokens_out))
 
                         if event_type == "text":
                             text_content = part.get("text", "")

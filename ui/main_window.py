@@ -77,6 +77,7 @@ class MainWindow(QMainWindow):
         self.worker.process_finished.connect(self.handle_finished)
         self.worker.started.connect(self._on_worker_started)
         self.worker.queue_empty.connect(self._on_worker_done)
+        self.worker.cost_updated.connect(self._on_cost_updated)
 
         # Drift guard - validate config on startup
         from core.drift_guard import check_config
@@ -961,6 +962,9 @@ class MainWindow(QMainWindow):
         self.input_layout.addWidget(self.send_button)
 
         self.right_layout.addLayout(self.input_layout)
+        self.cost_label = QLabel("Cost: —  |  Tokens: —")
+        self.cost_label.setStyleSheet("color: #888; font-size: 11px; padding: 2px 0;")
+        self.right_layout.addWidget(self.cost_label)
         self.splitter.addWidget(self.right_widget)
 
     def pick_attachment(self):
@@ -1170,6 +1174,14 @@ class MainWindow(QMainWindow):
             self._exec_tick.stop()
         elapsed = self._exec_timer.elapsed() / 1000 if hasattr(self, "_exec_timer") else 0
         self.statusBar().showMessage(f"Done in {elapsed:.1f}s")
+
+    def _on_cost_updated(self, cost, tokens_in, tokens_out):
+        self.cost_label.setText(
+            f"Cost: ${cost:.4f}  |  Tokens: {tokens_in:,} in / {tokens_out:,} out"
+        )
+        self.cost_label.setToolTip(
+            f"Input tokens: {tokens_in:,}\nOutput tokens: {tokens_out:,}\nCost: ${cost:.4f}"
+        )
 
     # -----------------------------------------------------------------------
     # Toolbar actions
