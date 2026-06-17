@@ -191,6 +191,12 @@ class MainWindow(QMainWindow):
         self.plan_mode_check.setToolTip("Agent describes changes without modifying any files")
         self.toolbar.addWidget(self.plan_mode_check)
 
+        self.theme_check = QCheckBox("Light Theme")
+        self.theme_check.setToolTip("Toggle between dark and light themes")
+        self.theme_check.stateChanged.connect(self.toggle_theme)
+        self.toolbar.addWidget(self.theme_check)
+        self._load_theme_preference()
+
         self.toolbar.addSeparator()
 
         # Core action buttons
@@ -1024,6 +1030,55 @@ class MainWindow(QMainWindow):
             self.agent_combo.setCurrentText("nano-coder")
             self._selected_agent = "nano-coder"
             self.statusBar().showMessage("Low Token Mode Enabled", 3000)
+
+    LIGHT_THEME = (
+        "QMainWindow { background-color: #f0f0f0; color: #1a1a1a; }"
+        "QTreeView, QListWidget, QTextBrowser, QTextEdit { background-color: #ffffff; color: #1a1a1a; border: 1px solid #ccc; }"
+        "QToolBar { background-color: #e8e8e8; border-bottom: 1px solid #ccc; }"
+        "QPushButton { background-color: #e0e0e0; color: #1a1a1a; border: 1px solid #bbb; padding: 3px 8px; }"
+        "QPushButton:hover { background-color: #d0d0d0; }"
+        "QTabWidget::pane { background-color: #ffffff; }"
+        "QTabBar::tab { background-color: #e0e0e0; color: #1a1a1a; padding: 4px 12px; }"
+        "QTabBar::tab:selected { background-color: #ffffff; }"
+        "QLabel { color: #1a1a1a; }"
+    )
+
+    def toggle_theme(self, state):
+        from PySide6.QtWidgets import QApplication
+
+        if state == Qt.Checked.value:
+            QApplication.instance().setStyleSheet(self.LIGHT_THEME)
+        else:
+            QApplication.instance().setStyleSheet("")
+            self._load_dark_theme()
+        self._save_theme_preference(state == Qt.Checked.value)
+
+    def _load_dark_theme(self):
+        from pathlib import Path
+
+        qss = Path(__file__).parent.parent / "assets" / "style.qss"
+        if qss.exists():
+            from PySide6.QtWidgets import QApplication
+
+            QApplication.instance().setStyleSheet(qss.read_text())
+
+    def _load_theme_preference(self):
+        from pathlib import Path
+
+        pref = Path(os.getcwd()) / ".opencode" / "theme.json"
+        if pref.exists():
+            import json
+
+            data = json.loads(pref.read_text())
+            if data.get("light", False):
+                self.theme_check.setChecked(True)
+
+    def _save_theme_preference(self, light):
+        import json
+        from pathlib import Path
+
+        pref = Path(os.getcwd()) / ".opencode" / "theme.json"
+        pref.write_text(json.dumps({"light": light}))
 
     @Slot()
     def send_message(self):
