@@ -750,12 +750,14 @@ class MainWindow(QMainWindow):
         self.refresh_memory()
 
     def refresh_memory(self):
+        self.refresh_mem_btn.setText("Loading...")
         from core.memory import AgentMemory
 
         mem = AgentMemory()
         self._all_memories = mem.retrieve_with_timestamps(os.getcwd())
         filter_text = self.memory_search.text().strip().lower() if hasattr(self, "memory_search") else ""
         self._render_memory_list(filter_text)
+        self.refresh_mem_btn.setText("Refresh")
 
     def _render_memory_list(self, filter_text=""):
         """Populate the memory list from self._all_memories with optional filter."""
