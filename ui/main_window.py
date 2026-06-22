@@ -350,6 +350,10 @@ class MainWindow(QMainWindow):
         self.fork_btn.setToolTip("Branch the selected session into a new one")
         self.fork_btn.clicked.connect(self.fork_session)
         session_layout.addWidget(self.fork_btn)
+        self.export_csv_btn = QPushButton("Export CSV")
+        self.export_csv_btn.setToolTip("Export visible sessions to CSV")
+        self.export_csv_btn.clicked.connect(self.export_sessions_csv)
+        session_layout.addWidget(self.export_csv_btn)
         self.sidebar_tabs.addTab(session_widget, "Sessions")
 
         # Memory Tab
@@ -1427,6 +1431,34 @@ class MainWindow(QMainWindow):
             title=title.strip() if ok and title.strip() else None,
         )
         QTimer.singleShot(500, self.refresh_sessions)
+
+    def export_sessions_csv(self):
+        import csv
+        from datetime import datetime
+
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Sessions CSV", "sessions.csv", "CSV Files (*.csv)"
+        )
+        if not path:
+            return
+        sessions = OpenCodeService.get_sessions_export()
+        if not sessions:
+            QMessageBox.warning(self, "Export", "No sessions to export.")
+            return
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["session_id", "title", "model", "agent", "created_at", "message_count"])
+            for s in sessions:
+                created = s.get("created_at")
+                if created:
+                    created = datetime.fromtimestamp(created).strftime("%Y-%m-%d %H:%M")
+                writer.writerow([
+                    s["id"], s["title"], s.get("model", ""), s.get("agent", ""),
+                    created or "", s["message_count"]
+                ])
+        QMessageBox.information(self, "Export", f"Exported {len(sessions)} sessions to {path}.")
 
     # -----------------------------------------------------------------------
     # Mission tab
